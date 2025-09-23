@@ -1,6 +1,6 @@
 body {
   text-align: center;
-  font-family: sans-serif;
+  font-family: Arial, sans-serif;
   background: #f9e6c9;
 }
 
@@ -8,17 +8,39 @@ h1 {
   color: #8b4513;
 }
 
-#cookie {
-  font-size: 24px;
-  padding: 20px;
-  border-radius: 50%;
-  background: #d2691e;
-  color: white;
-  border: none;
+.game {
+  display: flex;
+  justify-content: center;
+  gap: 50px;
+  margin-top: 30px;
+}
+
+.cookie-area img {
+  width: 200px;
   cursor: pointer;
   transition: transform 0.1s;
 }
 
-#cookie:active {
+.cookie-area img:active {
   transform: scale(0.9);
+}
+
+.shop {
+  text-align: left;
+}
+
+.shop button {
+  margin: 10px 0;
+  padding: 10px;
+  width: 200px;
+  background: #d2691e;
+  border: none;
+  color: white;
+  cursor: pointer;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+.shop button:hover {
+  background: #a0522d;
 }

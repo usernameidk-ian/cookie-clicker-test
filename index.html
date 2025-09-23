@@ -2,14 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mini Cookie Clicker</title>
+  <title>Cookie Clicker Clone</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>🍪 Cookie Clicker</h1>
-  <p>Cookies: <span id="score">0</span></p>
-  <button id="cookie">Click Me!</button>
-
+  <h1>🍪 Cookie Clicker Clone</h1>
+  
+  <div class="game">
+    <div class="cookie-area">
+      <img id="cookie" src="https://i.imgur.com/3Kc7LkF.png" alt="cookie">
+      <p>Cookies: <span id="score">0</span></p>
+      <p>CPS: <span id="cps">0</span></p>
+    </div>
+    
+    <div class="shop">
+      <h2>Shop</h2>
+      <button id="buyAuto">Auto Clicker (Cost: 10)</button><br>
+      <button id="buyGrandma">Grandma (Cost: 50)</button>
+    </div>
+  </div>
+  
   <script src="script.js"></script>
 </body>
 </html>

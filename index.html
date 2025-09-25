@@ -8,20 +8,25 @@
 <body>
   <h1>🍪 Cookie Clicker Clone</h1>
   
-  <div class="game">
+  <div class="container">
+    <!-- Cookie Area -->
     <div class="cookie-area">
-      <img id="cookie" src="https://upload.wikimedia.org/wikipedia/commons/7/70/Chocolate_chip_cookie.png" alt="cookie">
+      <img id="cookie" src="cookie.png" alt="cookie">
       <p>Cookies: <span id="score">0</span></p>
       <p>CPS: <span id="cps">0</span></p>
     </div>
     
+    <!-- Shop -->
     <div class="shop">
       <h2>Shop</h2>
-      <button id="buyAuto">Auto Clicker (Cost: 10)</button><br>
-      <button id="buyGrandma">Grandma (Cost: 50)</button>
+      <button id="buyCursor">Cursor (+1 CPS) — Cost: 15</button>
+      <button id="buyAuto">Auto Clicker (+2 CPS) — Cost: 50</button>
+      <button id="buyGrandma">Grandma (+5 CPS) — Cost: 100</button>
+      <button id="buyFarm">Farm (+20 CPS) — Cost: 500</button>
+      <button id="buyFactory">Factory (+100 CPS) — Cost: 2000</button>
     </div>
   </div>
-  
+
   <script src="script.js"></script>
 </body>
 </html>

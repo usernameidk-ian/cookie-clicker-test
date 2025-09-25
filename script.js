@@ -54,4 +54,25 @@ setInterval(() => {
   updateDisplay();
 }, 1000);
 
+// Save progress every 2s
+setInterval(() => {
+  localStorage.setItem("score", score);
+  localStorage.setItem("cps", cps);
+  localStorage.setItem("upgrades", JSON.stringify(upgrades));
+}, 2000);
+
+// Load progress on start
+window.addEventListener("load", () => {
+  if (localStorage.getItem("score")) {
+    score = parseInt(localStorage.getItem("score"));
+  }
+  if (localStorage.getItem("cps")) {
+    cps = parseInt(localStorage.getItem("cps"));
+  }
+  if (localStorage.getItem("upgrades")) {
+    upgrades = JSON.parse(localStorage.getItem("upgrades"));
+  }
+  updateDisplay();
+});
+
 updateDisplay();

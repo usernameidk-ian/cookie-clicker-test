@@ -14,7 +14,6 @@ const scoreDisplay = document.getElementById("score");
 const cpsDisplay = document.getElementById("cps");
 const cookie = document.getElementById("cookie");
 
-// Update the numbers + button text
 function updateDisplay() {
   scoreDisplay.textContent = score;
   cpsDisplay.textContent = cps;
@@ -42,18 +41,17 @@ function buyUpgrade(type) {
   }
 }
 
-// Attach shop buttons
+// Attach events
 document.getElementById("buyCursor").addEventListener("click", () => buyUpgrade("cursor"));
 document.getElementById("buyAuto").addEventListener("click", () => buyUpgrade("auto"));
 document.getElementById("buyGrandma").addEventListener("click", () => buyUpgrade("grandma"));
 document.getElementById("buyFarm").addEventListener("click", () => buyUpgrade("farm"));
 document.getElementById("buyFactory").addEventListener("click", () => buyUpgrade("factory"));
 
-// CPS loop (auto cookies per second)
+// CPS loop
 setInterval(() => {
   score += cps;
   updateDisplay();
 }, 1000);
 
-// Initialize
 updateDisplay();

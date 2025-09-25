@@ -85,24 +85,37 @@ document.addEventListener("click", () => {
   }
 }, { once: true });
 
-// Simple chat system
+// Firebase chat system
 const chatMessages = document.getElementById("chat-messages");
 const chatInput = document.getElementById("chat-input");
 const sendChat = document.getElementById("send-chat");
 
+// Reference to "messages" in your Firebase Realtime Database
+const messagesRef = db.ref("messages");
+
+// Send message to Firebase
 sendChat.addEventListener("click", () => {
-  let text = chatInput.value.trim();
-  if (text !== "") {
-    let msg = document.createElement("p");
-    msg.textContent = text;
-    chatMessages.appendChild(msg);
-    chatInput.value = "";
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  }
+  const text = chatInput.value.trim();
+  if (!text) return;
+
+  messagesRef.push({
+    text: text,
+    timestamp: Date.now()
+  });
+
+  chatInput.value = "";
 });
 
+// Press Enter to send
 chatInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    sendChat.click();
-  }
+  if (e.key === "Enter") sendChat.click();
+});
+
+// Listen for new messages
+messagesRef.on("child_added", (snapshot) => {
+  const msg = snapshot.val();
+  const p = document.createElement("p");
+  p.textContent = msg.text;
+  chatMessages.appendChild(p);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 });

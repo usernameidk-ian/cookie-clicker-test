@@ -14,6 +14,7 @@ const scoreDisplay = document.getElementById("score");
 const cpsDisplay = document.getElementById("cps");
 const cookie = document.getElementById("cookie");
 
+// Update the numbers + button text
 function updateDisplay() {
   scoreDisplay.textContent = score;
   cpsDisplay.textContent = cps;
@@ -41,55 +42,18 @@ function buyUpgrade(type) {
   }
 }
 
-// Attach events
+// Attach shop buttons
 document.getElementById("buyCursor").addEventListener("click", () => buyUpgrade("cursor"));
 document.getElementById("buyAuto").addEventListener("click", () => buyUpgrade("auto"));
 document.getElementById("buyGrandma").addEventListener("click", () => buyUpgrade("grandma"));
 document.getElementById("buyFarm").addEventListener("click", () => buyUpgrade("farm"));
 document.getElementById("buyFactory").addEventListener("click", () => buyUpgrade("factory"));
 
-// CPS loop
+// CPS loop (auto cookies per second)
 setInterval(() => {
   score += cps;
   updateDisplay();
 }, 1000);
 
-updateDisplay();    updateButtons();
-  }
-});
-
-// Buy Grandma
-buyGrandma.addEventListener("click", () => {
-  if (score >= grandmaCost) {
-    score -= grandmaCost;
-    cps += 5;
-    grandmaCost = Math.floor(grandmaCost * 1.5);
-    updateDisplay();
-    updateButtons();
-  }
-});
-
-// Auto cookie gain
-setInterval(() => {
-  score += cps;
-  updateDisplay();
-}, 1000);
-
-// Save progress
-setInterval(() => {
-  localStorage.setItem("score", score);
-  localStorage.setItem("cps", cps);
-  localStorage.setItem("autoCost", autoClickerCost);
-  localStorage.setItem("grandmaCost", grandmaCost);
-}, 2000);
-
-// Helpers
-function updateDisplay() {
-  scoreDisplay.textContent = score;
-  cpsDisplay.textContent = cps;
-}
-
-function updateButtons() {
-  buyAuto.textContent = `Auto Clicker (Cost: ${autoClickerCost})`;
-  buyGrandma.textContent = `Grandma (Cost: ${grandmaCost})`;
-}
+// Initialize
+updateDisplay();

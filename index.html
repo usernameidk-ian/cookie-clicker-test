@@ -41,6 +41,26 @@
     Your browser does not support audio.
   </audio>
 
+  <!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js"></script>
+
+<script>
+  // Your Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyA0tbUqzIN1klxMykCcI9rg1a2EVZqMbtw",
+    authDomain: "cookie-clicker-chat.firebaseapp.com",
+    databaseURL: "https://console.firebase.google.com/u/0/project/cookie-clicker-chat/database/cookie-clicker-chat-default-rtdb/data/~2F", 
+    projectId: "cookie-clicker-chat",
+    storageBucket: "cookie-clicker-chat.firebasestorage.app",
+    messagingSenderId: "758507208645",
+    appId: "1:758507208645:web:068b66b4eb6ab4753555ac"
+  };
+
+  // Initialize Firebase
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+</script>
   <script src="script.js"></script>
 </body>
 </html>

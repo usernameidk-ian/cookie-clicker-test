@@ -76,3 +76,33 @@ window.addEventListener("load", () => {
 });
 
 updateDisplay();
+
+// Enable music on first click
+document.addEventListener("click", () => {
+  const bgm = document.getElementById("bgm");
+  if (bgm.paused) {
+    bgm.play().catch(() => {});
+  }
+}, { once: true });
+
+// Simple chat system
+const chatMessages = document.getElementById("chat-messages");
+const chatInput = document.getElementById("chat-input");
+const sendChat = document.getElementById("send-chat");
+
+sendChat.addEventListener("click", () => {
+  let text = chatInput.value.trim();
+  if (text !== "") {
+    let msg = document.createElement("p");
+    msg.textContent = text;
+    chatMessages.appendChild(msg);
+    chatInput.value = "";
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+});
+
+chatInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") {
+    sendChat.click();
+  }
+});

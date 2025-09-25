@@ -1,9 +1,11 @@
 body {
   font-family: Arial, sans-serif;
-  background: #f8e7c9;
+  background: linear-gradient(135deg, #f8e7c9, #f1d6b8);
+  background-size: cover;
   margin: 0;
   padding: 0;
   text-align: center;
+  color: #3e2723;
 }
 
 h1 {
@@ -66,5 +68,43 @@ h1 {
 }
 
 .shop button:hover {
+  background: #a0522d;
+}
+.chat-box {
+  background: #fff3e0;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  min-width: 220px;
+  max-width: 300px;
+  text-align: left;
+  margin-top: 20px;
+}
+
+#chat-messages {
+  height: 150px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+}
+
+#chat-input {
+  width: 70%;
+  padding: 8px;
+}
+
+#send-chat {
+  padding: 8px 12px;
+  background: #d2691e;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#send-chat:hover {
   background: #a0522d;
 }

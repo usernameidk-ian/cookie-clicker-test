@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>🍪 Cookie Clicker Clone</h1>
+  <h1>🍪 COOKIES CLICKER THING</h1>
   
   <div class="container">
     <!-- Cookie Area -->
@@ -25,7 +25,21 @@
       <button id="buyFarm">Farm (+20 CPS) — Cost: 500</button>
       <button id="buyFactory">Factory (+100 CPS) — Cost: 2000</button>
     </div>
+    
+    <!-- Chat -->
+    <div class="chat-box">
+      <h2>Chat</h2>
+      <div id="chat-messages"></div>
+      <input type="text" id="chat-input" placeholder="Type a message...">
+      <button id="send-chat">Send</button>
+    </div>
   </div>
+
+  <!-- Background Music -->
+  <audio id="bgm" loop>
+    <source src="music.mp3" type="audio/mpeg">
+    Your browser does not support audio.
+  </audio>
 
   <script src="script.js"></script>
 </body>

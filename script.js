@@ -1,3 +1,18 @@
+let username = prompt("Enter your username:") || "Anonymous";
+// Function to give each username a consistent color
+function stringToColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = "#";
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xFF;
+    color += ("00" + value.toString(16)).slice(-2);
+  }
+  return color;
+}
+const userColor = stringToColor(username); 
 let score = 0;
 let cps = 0;
 
@@ -100,6 +115,7 @@ sendChat.addEventListener("click", () => {
 
   messagesRef.push({
     text: text,
+    username: username,
     timestamp: Date.now()
   });
 
@@ -115,7 +131,11 @@ chatInput.addEventListener("keypress", (e) => {
 messagesRef.on("child_added", (snapshot) => {
   const msg = snapshot.val();
   const p = document.createElement("p");
-  p.textContent = msg.text;
+  p.textContent = `${msg.username}: ${msg.text}`;
+  
+  // Color username
+  p.style.color = stringToColor(msg.username);
+  
   chatMessages.appendChild(p);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });

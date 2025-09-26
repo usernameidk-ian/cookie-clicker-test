@@ -1,4 +1,4 @@
-let username = prompt("Enter your username:") || "Anonymous";
+let username = prompt("Enter your username:") || "unknown loser";
 // Function to give each username a consistent color
 function stringToColor(str) {
   let hash = 0;

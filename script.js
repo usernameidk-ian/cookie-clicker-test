@@ -127,7 +127,7 @@ imageInput.addEventListener("change", e => {
   const fileRef = storageRef.child(`images/${Date.now()}_${file.name}`);
   fileRef.put(file).then(() => fileRef.getDownloadURL().then(url => {
     messagesRef.push({ imageUrl: url, username, timestamp: Date.now() });
-  }));
+  })).catch(err => console.error("Image upload failed:", err));
   imageInput.value="";
 });
 
@@ -146,7 +146,6 @@ messagesRef.on("child_added", snapshot => {
     p.appendChild(img);
   }
 
-  // Admin delete button
   if(isAdmin){
     const deleteBtn = document.createElement("button");
     deleteBtn.textContent="❌";
@@ -165,8 +164,8 @@ goldenCookieContainer.id = "golden-cookie-container";
 document.body.appendChild(goldenCookieContainer);
 
 function spawnGoldenCookie() {
-  if (Math.random() < 0.1) { // 10% chance
-    const bonus = 1000000; // 1 million cookies
+  if (Math.random() < 0.1) {
+    const bonus = Math.floor(Math.random() * 4500000 + 500000); // 0.5M → 5M
     const gc = document.createElement("img");
     gc.src = "golden-cookie.png";
     gc.style.width = "60px";
@@ -222,7 +221,7 @@ if(isAdmin){
     onlineList.innerHTML="";
     snapshot.forEach(child=>{
       const li=document.createElement("li");
-      li.textContent=child.val();
+      li.textContent = child.val(); // ensures string
       onlineList.appendChild(li);
     });
   });

@@ -138,6 +138,56 @@ sendChat.addEventListener("click", () => {
 chatInput.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendChat.click();
 });
+const clearChatBtn = document.getElementById("clear-chat");
+
+// Show Clear Chat button for admin
+if (isAdmin) clearChatBtn.style.display = "inline-block";
+
+// Clear all chat (admin only)
+if (isAdmin) {
+  clearChatBtn.addEventListener("click", () => {
+    if (confirm("Are you sure you want to delete ALL messages?")) {
+      db.ref("messages").remove();
+      chatMessages.innerHTML = "";
+    }
+  });
+}
+
+// Delete individual messages (admin only)
+messagesRef.on("child_added", snapshot => {
+  const msg = snapshot.val();
+  const key = snapshot.key;
+  const p = document.createElement("p");
+
+  if (msg.text) {
+    p.textContent = `${msg.username}: ${msg.text}`;
+    p.style.color = stringToColor(msg.username);
+  }
+
+  if (msg.imageUrl) {
+    const img = document.createElement("img");
+    img.src = msg.imageUrl;
+    img.style.maxWidth = "150px";
+    img.style.display = "block";
+    img.style.marginTop = "5px";
+    p.appendChild(img);
+  }
+
+  // Admin delete button for each message
+  if (isAdmin) {
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "❌";
+    deleteBtn.style.marginLeft = "10px";
+    deleteBtn.addEventListener("click", () => {
+      messagesRef.child(key).remove();
+      p.remove();
+    });
+    p.appendChild(deleteBtn);
+  }
+
+  chatMessages.appendChild(p);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+});
 
 // Listen for new messages
 messagesRef.on("child_added", (snapshot) => {

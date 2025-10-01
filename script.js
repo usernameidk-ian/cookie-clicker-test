@@ -10,6 +10,7 @@ if (username === adminUsername) password = prompt("Enter admin password(leave bl
 
 const isAdmin = username === adminUsername && password === adminPassword;
 
+// Assign consistent color
 function stringToColor(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
@@ -49,6 +50,10 @@ function updateDisplay() {
 cookie.addEventListener("click", () => { score++; updateDisplay(); });
 
 // Buy upgrades
+["Cursor","Auto","Grandma","Farm","Factory"].forEach(name => {
+  document.getElementById("buy"+name).addEventListener("click", () => buyUpgrade(name.toLowerCase()));
+});
+
 function buyUpgrade(type) {
   let upgrade = upgrades[type];
   if (score >= upgrade.cost) {
@@ -58,10 +63,6 @@ function buyUpgrade(type) {
     updateDisplay();
   }
 }
-
-["Cursor","Auto","Grandma","Farm","Factory"].forEach(name => {
-  document.getElementById("buy"+name).addEventListener("click", () => buyUpgrade(name.toLowerCase()));
-});
 
 // CPS loop
 setInterval(() => { score += cps; updateDisplay(); }, 1000);
@@ -105,7 +106,7 @@ chatInput.addEventListener("keypress", e => { if(e.key==="Enter") sendChat.click
 // Admin features
 if (isAdmin) clearChatBtn.style.display = "inline-block";
 if (isAdmin) clearChatBtn.addEventListener("click", () => {
-  if(confirm("Delete all messages?")) { db.ref("messages").remove(); chatMessages.innerHTML=""; }
+  if(confirm("Delete all messages?")) { messagesRef.remove(); chatMessages.innerHTML=""; }
 });
 
 // Image uploads
@@ -131,7 +132,7 @@ messagesRef.on("child_added", snapshot => {
   const p = document.createElement("p");
 
   if(msg.text) { p.textContent = `${msg.username}: ${msg.text}`; p.style.color = stringToColor(msg.username); }
-  if(msg.imageUrl) { 
+  if(msg.imageUrl){ 
     const img = document.createElement("img");
     img.src = msg.imageUrl;
     img.style.maxWidth="150px";
@@ -154,13 +155,13 @@ messagesRef.on("child_added", snapshot => {
 });
 
 // ---------------------- GOLDEN COOKIE ----------------------
-const goldenCookieContainer = document.getElementById("golden-cookie-container");
+const goldenCookieContainer = document.body; // container for golden cookie
 
 function spawnGoldenCookie() {
-  if(Math.random() < 0.1){ // 10% chance
+  if(Math.random() < 0.1){
     const bonus = Math.floor(Math.random()*50)+10;
     const gc = document.createElement("img");
-    gc.src="golden-cookie.png"; // your golden cookie image
+    gc.src="golden-cookie.png";
     gc.style.width="60px";
     gc.style.position="absolute";
     gc.style.top=Math.random()*(window.innerHeight-60)+"px";
@@ -169,7 +170,6 @@ function spawnGoldenCookie() {
     gc.style.zIndex=10000;
     gc.style.pointerEvents="auto";
 
-    // Move slowly
     let dx = (Math.random()*2+1)*(Math.random()<0.5?-1:1);
     let dy = (Math.random()*2+1)*(Math.random()<0.5?-1:1);
     const moveInterval = setInterval(()=>{
@@ -199,7 +199,7 @@ const myRef = onlineRef.push(username);
 myRef.onDisconnect().remove();
 
 if(isAdmin){
-  const adminOnlineList = document.createElement("div");
+  let adminOnlineList = document.createElement("div");
   adminOnlineList.style.background="#fff3e0";
   adminOnlineList.style.padding="10px";
   adminOnlineList.style.position="fixed";
@@ -209,8 +209,8 @@ if(isAdmin){
   adminOnlineList.style.borderRadius="8px";
   adminOnlineList.innerHTML="<h4>Online Users</h4><ul id='online-list'></ul>";
   document.body.appendChild(adminOnlineList);
-  const onlineList = document.getElementById("online-list");
 
+  const onlineList = document.getElementById("online-list");
   onlineRef.on("value", snapshot=>{
     onlineList.innerHTML="";
     snapshot.forEach(child=>{

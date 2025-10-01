@@ -10,7 +10,6 @@ if (username === adminUsername) password = prompt("Enter admin password(leave bl
 
 const isAdmin = username === adminUsername && password === adminPassword;
 
-// Assign consistent color
 function stringToColor(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
@@ -29,7 +28,13 @@ let upgrades = {
   auto: { cost: 50, cps: 2 },
   grandma: { cost: 100, cps: 5 },
   farm: { cost: 500, cps: 20 },
-  factory: { cost: 2000, cps: 100 }
+  factory: { cost: 2000, cps: 100 },
+  mine: { cost: 10000, cps: 500 },
+  bank: { cost: 50000, cps: 2500 },
+  lab: { cost: 200000, cps: 10000 },
+  spaceStation: { cost: 1000000, cps: 50000 },
+  galaxyFactory: { cost: 5000000, cps: 250000 },
+  timeMachine: { cost: 20000000, cps: 1000000 },
 };
 
 const scoreDisplay = document.getElementById("score");
@@ -37,23 +42,18 @@ const cpsDisplay = document.getElementById("cps");
 const cookie = document.getElementById("cookie");
 
 function updateDisplay() {
-  scoreDisplay.textContent = score;
-  cpsDisplay.textContent = cps;
-  document.getElementById("buyCursor").textContent = `Cursor (+1 CPS) — Cost: ${upgrades.cursor.cost}`;
-  document.getElementById("buyAuto").textContent = `Auto Clicker (+2 CPS) — Cost: ${upgrades.auto.cost}`;
-  document.getElementById("buyGrandma").textContent = `Grandma (+5 CPS) — Cost: ${upgrades.grandma.cost}`;
-  document.getElementById("buyFarm").textContent = `Farm (+20 CPS) — Cost: ${upgrades.farm.cost}`;
-  document.getElementById("buyFactory").textContent = `Factory (+100 CPS) — Cost: ${upgrades.factory.cost}`;
+  scoreDisplay.textContent = score.toLocaleString();
+  cpsDisplay.textContent = cps.toLocaleString();
+  for (const key in upgrades) {
+    const btn = document.getElementById("buy" + key.charAt(0).toUpperCase() + key.slice(1));
+    if (btn) btn.textContent = `${key.charAt(0).toUpperCase() + key.slice(1)} (+${upgrades[key].cps} CPS) — Cost: ${upgrades[key].cost.toLocaleString()}`;
+  }
 }
 
 // Cookie click
 cookie.addEventListener("click", () => { score++; updateDisplay(); });
 
 // Buy upgrades
-["Cursor","Auto","Grandma","Farm","Factory"].forEach(name => {
-  document.getElementById("buy"+name).addEventListener("click", () => buyUpgrade(name.toLowerCase()));
-});
-
 function buyUpgrade(type) {
   let upgrade = upgrades[type];
   if (score >= upgrade.cost) {
@@ -63,6 +63,11 @@ function buyUpgrade(type) {
     updateDisplay();
   }
 }
+
+Object.keys(upgrades).forEach(name => {
+  const btn = document.getElementById("buy" + name.charAt(0).toUpperCase() + name.slice(1));
+  if(btn) btn.addEventListener("click", () => buyUpgrade(name));
+});
 
 // CPS loop
 setInterval(() => { score += cps; updateDisplay(); }, 1000);
@@ -106,7 +111,7 @@ chatInput.addEventListener("keypress", e => { if(e.key==="Enter") sendChat.click
 // Admin features
 if (isAdmin) clearChatBtn.style.display = "inline-block";
 if (isAdmin) clearChatBtn.addEventListener("click", () => {
-  if(confirm("Delete all messages?")) { messagesRef.remove(); chatMessages.innerHTML=""; }
+  if(confirm("Delete all messages?")) { db.ref("messages").remove(); chatMessages.innerHTML=""; }
 });
 
 // Image uploads
@@ -132,7 +137,7 @@ messagesRef.on("child_added", snapshot => {
   const p = document.createElement("p");
 
   if(msg.text) { p.textContent = `${msg.username}: ${msg.text}`; p.style.color = stringToColor(msg.username); }
-  if(msg.imageUrl){ 
+  if(msg.imageUrl) { 
     const img = document.createElement("img");
     img.src = msg.imageUrl;
     img.style.maxWidth="150px";
@@ -155,43 +160,45 @@ messagesRef.on("child_added", snapshot => {
 });
 
 // ---------------------- GOLDEN COOKIE ----------------------
-const goldenCookieContainer = document.body; // container for golden cookie
+const goldenCookieContainer = document.createElement("div");
+goldenCookieContainer.id = "golden-cookie-container";
+document.body.appendChild(goldenCookieContainer);
 
 function spawnGoldenCookie() {
-  if(Math.random() < 0.1){
-    const bonus = Math.floor(Math.random()*50)+10;
+  if (Math.random() < 0.1) { // 10% chance
+    const bonus = 1000000; // 1 million cookies
     const gc = document.createElement("img");
-    gc.src="golden-cookie.png";
-    gc.style.width="60px";
-    gc.style.position="absolute";
-    gc.style.top=Math.random()*(window.innerHeight-60)+"px";
-    gc.style.left=Math.random()*(window.innerWidth-60)+"px";
-    gc.style.cursor="pointer";
-    gc.style.zIndex=10000;
-    gc.style.pointerEvents="auto";
+    gc.src = "golden-cookie.png";
+    gc.style.width = "60px";
+    gc.style.position = "absolute";
+    gc.style.top = Math.random() * (window.innerHeight - 60) + "px";
+    gc.style.left = Math.random() * (window.innerWidth - 60) + "px";
+    gc.style.cursor = "pointer";
+    gc.style.zIndex = 10000;
+    gc.style.pointerEvents = "auto";
 
-    let dx = (Math.random()*2+1)*(Math.random()<0.5?-1:1);
-    let dy = (Math.random()*2+1)*(Math.random()<0.5?-1:1);
-    const moveInterval = setInterval(()=>{
+    let dx = (Math.random() * 2 + 1) * (Math.random() < 0.5 ? -1 : 1);
+    let dy = (Math.random() * 2 + 1) * (Math.random() < 0.5 ? -1 : 1);
+    const moveInterval = setInterval(() => {
       let top = parseFloat(gc.style.top);
       let left = parseFloat(gc.style.left);
-      if(top+dy<0 || top+dy>window.innerHeight-60) dy*=-1;
-      if(left+dx<0 || left+dx>window.innerWidth-60) dx*=-1;
-      gc.style.top = top+dy+"px";
-      gc.style.left = left+dx+"px";
+      if (top + dy < 0 || top + dy > window.innerHeight - 60) dy *= -1;
+      if (left + dx < 0 || left + dx > window.innerWidth - 60) dx *= -1;
+      gc.style.top = top + dy + "px";
+      gc.style.left = left + dx + "px";
     }, 30);
 
-    gc.addEventListener("click", ()=>{
-      score+=bonus; updateDisplay();
-      messagesRef.push({ text:`✨ ${username} clicked a Golden Cookie! +${bonus} cookies!`, username:"System", timestamp:Date.now() });
+    gc.addEventListener("click", () => {
+      score += bonus; updateDisplay();
+      messagesRef.push({ text:`✨ ${username} clicked a Golden Cookie! +${bonus.toLocaleString()} cookies!`, username:"System", timestamp:Date.now() });
       clearInterval(moveInterval); gc.remove();
     });
 
     goldenCookieContainer.appendChild(gc);
-    setTimeout(()=>{ clearInterval(moveInterval); gc.remove(); },15000);
+    setTimeout(() => { clearInterval(moveInterval); gc.remove(); }, 15000);
   }
 }
-setInterval(spawnGoldenCookie,30000);
+setInterval(spawnGoldenCookie, 30000);
 
 // ---------------------- ONLINE USERS (ADMIN) ----------------------
 const onlineRef = db.ref("onlineUsers");
@@ -199,7 +206,7 @@ const myRef = onlineRef.push(username);
 myRef.onDisconnect().remove();
 
 if(isAdmin){
-  let adminOnlineList = document.createElement("div");
+  const adminOnlineList = document.createElement("div");
   adminOnlineList.style.background="#fff3e0";
   adminOnlineList.style.padding="10px";
   adminOnlineList.style.position="fixed";
@@ -209,8 +216,8 @@ if(isAdmin){
   adminOnlineList.style.borderRadius="8px";
   adminOnlineList.innerHTML="<h4>Online Users</h4><ul id='online-list'></ul>";
   document.body.appendChild(adminOnlineList);
-
   const onlineList = document.getElementById("online-list");
+
   onlineRef.on("value", snapshot=>{
     onlineList.innerHTML="";
     snapshot.forEach(child=>{

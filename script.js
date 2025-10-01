@@ -4,13 +4,11 @@ let username = prompt("Enter your username:") || "unknown loser";
 const adminUsername = "bian";
 const adminPassword = "bian_password";
 
-// Prompt for password only if username matches
 let password = "";
 if (username === adminUsername) {
-  password = prompt("Enter admin password(leave blank/skip):") || "";
+  password = prompt("Enter admin password:") || "";
 }
 
-// Determine if admin
 const isAdmin = username === adminUsername && password === adminPassword;
 
 // Function to give each username a consistent color
@@ -26,8 +24,8 @@ function stringToColor(str) {
   }
   return color;
 }
-const userColor = stringToColor(username); 
 
+const userColor = stringToColor(username); 
 let score = 0;
 let cps = 0;
 
@@ -71,12 +69,10 @@ function buyUpgrade(type) {
   }
 }
 
-// Attach events
-document.getElementById("buyCursor").addEventListener("click", () => buyUpgrade("cursor"));
-document.getElementById("buyAuto").addEventListener("click", () => buyUpgrade("auto"));
-document.getElementById("buyGrandma").addEventListener("click", () => buyUpgrade("grandma"));
-document.getElementById("buyFarm").addEventListener("click", () => buyUpgrade("farm"));
-document.getElementById("buyFactory").addEventListener("click", () => buyUpgrade("factory"));
+["Cursor","Auto","Grandma","Farm","Factory"].forEach(name => {
+  const id = "buy" + name;
+  document.getElementById(id).addEventListener("click", () => buyUpgrade(name.toLowerCase()));
+});
 
 // CPS loop
 setInterval(() => {
@@ -84,33 +80,14 @@ setInterval(() => {
   updateDisplay();
 }, 1000);
 
-// Random event: Golden Cookie
-setInterval(() => {
-  if (Math.random() < 0.01) { // 1% chance per second
-    const bonus = cps * 2 || 10;
-    cps += bonus;
-    
-    // Show message in chat
-    messagesRef.push({
-      text: `✨ Golden Cookie! CPS +${bonus} for 10s!`,
-      username: "System",
-      timestamp: Date.now()
-    });
-
-    setTimeout(() => {
-      cps -= bonus;
-    }, 10000);
-  }
-}, 1000);
-
-// Save progress every 2s
+// Save progress
 setInterval(() => {
   localStorage.setItem("score", score);
   localStorage.setItem("cps", cps);
   localStorage.setItem("upgrades", JSON.stringify(upgrades));
 }, 2000);
 
-// Load progress on start
+// Load progress
 window.addEventListener("load", () => {
   if (localStorage.getItem("score")) score = parseInt(localStorage.getItem("score"));
   if (localStorage.getItem("cps")) cps = parseInt(localStorage.getItem("cps"));
@@ -118,57 +95,68 @@ window.addEventListener("load", () => {
   updateDisplay();
 });
 
-updateDisplay();
-
 // Enable music on first click
 document.addEventListener("click", () => {
   const bgm = document.getElementById("bgm");
   if (bgm.paused) bgm.play().catch(() => {});
 }, { once: true });
 
-// ------------------- CHAT SYSTEM -------------------
+/* ===== FIREBASE CHAT SYSTEM ===== */
 const chatMessages = document.getElementById("chat-messages");
 const chatInput = document.getElementById("chat-input");
 const sendChat = document.getElementById("send-chat");
-
-// Reference to Firebase
-const messagesRef = db.ref("messages");
-
-// Send message
-sendChat.addEventListener("click", () => {
-  const text = chatInput.value.trim();
-  if (!text) return;
-
-  messagesRef.push({
-    text: text,
-    username: username,
-    timestamp: Date.now()
-  });
-
-  chatInput.value = "";
-});
-
-// Press Enter to send
-chatInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") sendChat.click();
-});
-
 const clearChatBtn = document.getElementById("clear-chat");
-if (isAdmin) clearChatBtn.style.display = "inline-block";
+const uploadBtn = document.getElementById("uploadBtn");
+const imageInput = document.getElementById("imageInput");
 
-// Clear all chat (admin only)
+const messagesRef = db.ref("messages");
+const usersRef = db.ref("onlineUsers");
+
+// Add self to online users
+const userRef = usersRef.push({ username, timestamp: Date.now() });
+
+// Remove from online on disconnect
+userRef.onDisconnect().remove();
+
+// Admin can see online users
 if (isAdmin) {
-  clearChatBtn.addEventListener("click", () => {
-    if (confirm("Are you sure you want to delete ALL messages?")) {
-      db.ref("messages").remove();
-      chatMessages.innerHTML = "";
-    }
+  const onlineList = document.createElement("div");
+  onlineList.id = "online-list";
+  onlineList.style.marginTop = "10px";
+  onlineList.style.fontWeight = "bold";
+  onlineList.innerHTML = "<h3>Online Users:</h3>";
+  document.querySelector(".chat-box").appendChild(onlineList);
+
+  usersRef.on("value", snapshot => {
+    onlineList.innerHTML = "<h3>Online Users:</h3>";
+    snapshot.forEach(snap => {
+      const u = snap.val();
+      const p = document.createElement("p");
+      p.textContent = u.username;
+      onlineList.appendChild(p);
+    });
   });
 }
 
-// ------------------- IMAGE UPLOAD -------------------
-const uploadBtn = document.getElementById("uploadBtn");
-const imageInput = document.getElementById("imageInput");
+// Clear chat button (admin only)
+if (isAdmin) clearChatBtn.style.display = "inline-block";
+if (isAdmin) clearChatBtn.addEventListener("click", () => {
+  if (confirm("Are you sure you want to delete ALL messages?")) {
+    messagesRef.remove();
+    chatMessages.innerHTML = "";
+  }
+});
+
+// Send chat
+sendChat.addEventListener("click", () => {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  messagesRef.push({ text, username, timestamp: Date.now() });
+  chatInput.value = "";
+});
+chatInput.addEventListener("keypress", e => { if (e.key === "Enter") sendChat.click(); });
+
+// Upload image
 const storage = firebase.storage();
 const storageRef = storage.ref();
 
@@ -176,57 +164,60 @@ uploadBtn.addEventListener("click", () => imageInput.click());
 imageInput.addEventListener("change", e => {
   const file = e.target.files[0];
   if (!file) return;
-
   const fileRef = storageRef.child(`images/${Date.now()}_${file.name}`);
-  fileRef.put(file).then(() => {
-    fileRef.getDownloadURL().then(url => {
-      messagesRef.push({
-        imageUrl: url,
-        username: username,
-        timestamp: Date.now()
-      });
-    });
-  });
+  fileRef.put(file).then(() => fileRef.getDownloadURL().then(url => {
+    messagesRef.push({ imageUrl: url, username, timestamp: Date.now() });
+  }));
   imageInput.value = "";
 });
 
-// ------------------- ONLINE USERS (ADMIN ONLY) -------------------
-const onlineRef = db.ref("onlineUsers");
-const userKey = onlineRef.push().key;
+// Unified message rendering
+function renderMessage(msg, key) {
+  const p = document.createElement("p");
 
-onlineRef.child(userKey).set({
-  username: username,
-  lastActive: Date.now()
-});
+  if (msg.text) {
+    p.textContent = `${msg.username}: ${msg.text}`;
+    p.style.color = stringToColor(msg.username);
+  }
 
-window.addEventListener("beforeunload", () => {
-  onlineRef.child(userKey).remove();
-});
+  if (msg.imageUrl) {
+    const img = document.createElement("img");
+    img.src = msg.imageUrl;
+    img.style.maxWidth = "150px";
+    img.style.display = "block";
+    img.style.marginTop = "5px";
+    if (msg.text) p.appendChild(img);
+    else {
+      p.textContent = `${msg.username}: `;
+      p.style.color = stringToColor(msg.username);
+      p.appendChild(img);
+    }
+  }
 
-// Update lastActive every 5s
-setInterval(() => {
-  onlineRef.child(userKey).update({ lastActive: Date.now() });
-}, 5000);
+  if (isAdmin && key) {
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "❌";
+    deleteBtn.style.marginLeft = "10px";
+    deleteBtn.addEventListener("click", () => { messagesRef.child(key).remove(); p.remove(); });
+    p.appendChild(deleteBtn);
+  }
 
-// Show online users (admin only)
-if (isAdmin) {
-  const onlineList = document.createElement("div");
-  onlineList.id = "online-list";
-  onlineList.style.background = "#fff3e0";
-  onlineList.style.padding = "10px";
-  onlineList.style.borderRadius = "8px";
-  onlineList.style.marginTop = "10px";
-  onlineList.innerHTML = "<h3>Online Users:</h3><ul id='online-ul'></ul>";
-  document.body.appendChild(onlineList);
-
-  const onlineUl = document.getElementById("online-ul");
-
-  onlineRef.on("value", snapshot => {
-    onlineUl.innerHTML = "";
-    snapshot.forEach(child => {
-      const li = document.createElement("li");
-      li.textContent = child.val().username;
-      onlineUl.appendChild(li);
-    });
-  });
+  chatMessages.appendChild(p);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
+
+messagesRef.on("child_added", snapshot => {
+  renderMessage(snapshot.val(), snapshot.key);
+});
+
+/* ===== RANDOM EVENTS / GOLDEN COOKIE ===== */
+function spawnGoldenCookie() {
+  const chance = Math.random();
+  if (chance < 0.1) { // 10% chance every 30s
+    const bonus = Math.floor(Math.random() * 50) + 10;
+    score += bonus;
+    updateDisplay();
+    messagesRef.push({ text: `✨ Golden Cookie! +${bonus} cookies!`, username: "System", timestamp: Date.now() });
+  }
+}
+setInterval(spawnGoldenCookie, 30000);

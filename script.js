@@ -199,30 +199,3 @@ function spawnGoldenCookie() {
 }
 setInterval(spawnGoldenCookie, 30000);
 
-// ---------------------- ONLINE USERS (ADMIN) ----------------------
-const onlineRef = db.ref("onlineUsers");
-const myRef = onlineRef.push(username);
-myRef.onDisconnect().remove();
-
-if(isAdmin){
-  const adminOnlineList = document.createElement("div");
-  adminOnlineList.style.background="#fff3e0";
-  adminOnlineList.style.padding="10px";
-  adminOnlineList.style.position="fixed";
-  adminOnlineList.style.top="10px";
-  adminOnlineList.style.right="10px";
-  adminOnlineList.style.border="1px solid #d2691e";
-  adminOnlineList.style.borderRadius="8px";
-  adminOnlineList.innerHTML="<h4>Online Users</h4><ul id='online-list'></ul>";
-  document.body.appendChild(adminOnlineList);
-  const onlineList = document.getElementById("online-list");
-
-  onlineRef.on("value", snapshot=>{
-    onlineList.innerHTML="";
-    snapshot.forEach(child=>{
-      const li=document.createElement("li");
-      li.textContent = child.val(); // ensures string
-      onlineList.appendChild(li);
-    });
-  });
-}

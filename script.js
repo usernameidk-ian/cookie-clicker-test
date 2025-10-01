@@ -133,6 +133,67 @@ messagesRef.on("child_added", (snapshot) => {
   const p = document.createElement("p");
   p.textContent = `${msg.username}: ${msg.text}`;
   
+  // === IMAGE UPLOAD SYSTEM ===
+const uploadBtn = document.getElementById("uploadBtn");
+const imageInput = document.getElementById("imageInput");
+
+// Get Firebase storage reference
+const storage = firebase.storage();
+const storageRef = storage.ref();
+
+// When upload button is clicked, trigger file picker
+uploadBtn.addEventListener("click", () => {
+  imageInput.click();
+});
+
+// When file is chosen
+imageInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Create a unique filename
+  const fileRef = storageRef.child(`images/${Date.now()}_${file.name}`);
+
+  // Upload file
+  fileRef.put(file).then(() => {
+    fileRef.getDownloadURL().then((url) => {
+      // Push image message to database
+      messagesRef.push({
+        imageUrl: url,
+        username: username,
+        timestamp: Date.now()
+      });
+    });
+  });
+
+  imageInput.value = ""; // reset
+});
+
+// Modify listener to show images too
+messagesRef.on("child_added", (snapshot) => {
+  const msg = snapshot.val();
+  const p = document.createElement("p");
+
+  if (msg.text) {
+    p.textContent = `${msg.username}: ${msg.text}`;
+    p.style.color = stringToColor(msg.username);
+  }
+
+  if (msg.imageUrl) {
+    const img = document.createElement("img");
+    img.src = msg.imageUrl;
+    img.style.maxWidth = "150px";
+    img.style.display = "block";
+    img.style.marginTop = "5px";
+    p.textContent = `${msg.username}: `;
+    p.style.color = stringToColor(msg.username);
+    p.appendChild(img);
+  }
+
+  chatMessages.appendChild(p);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+});
+  
   // Color username
   p.style.color = stringToColor(msg.username);
   

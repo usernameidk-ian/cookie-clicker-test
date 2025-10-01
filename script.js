@@ -1,4 +1,16 @@
 let username = prompt("Enter your username:") || "unknown loser";
+// Admin setup
+const adminUsername = "bian"; // 
+const adminPassword = "bian_password"; // 
+
+// Prompt for password only if username matches
+let password = "";
+if (username === adminUsername) {
+  password = prompt("Enter admin password:") || "";
+}
+
+// Determine if admin
+const isAdmin = username === adminUsername && password === adminPassword;
 // Function to give each username a consistent color
 function stringToColor(str) {
   let hash = 0;

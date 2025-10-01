@@ -14,6 +14,9 @@
       <img id="cookie" src="cookie.png" alt="cookie">
       <p>Cookies: <span id="score">0</span></p>
       <p>CPS: <span id="cps">0</span></p>
+      
+      <!-- Golden Cookie Container -->
+      <div id="golden-cookie-container" style="position: relative;"></div>
     </div>
     
     <!-- Shop -->
@@ -29,16 +32,22 @@
     <!-- Chat -->
     <div class="chat-box">
       <button id="clear-chat" style="display:none;">🗑 Clear Chat</button>
-  <h2>yapping(chat)</h2>
-  <div id="chat-messages"></div>
+      <h2>yapping(chat)</h2>
+      <div id="chat-messages"></div>
 
-  <!-- Chat input -->
-  <input type="text" id="chat-input" placeholder="Type a message...">
-  <button id="send-chat">Send</button>
+      <!-- Chat input -->
+      <input type="text" id="chat-input" placeholder="Type a message...">
+      <button id="send-chat">Send</button>
 
-  <!-- Upload image button -->
-  <input type="file" id="imageInput" accept="image/*" style="display:none;">
-  <button id="uploadBtn">📷</button>
+      <!-- Upload image button -->
+      <input type="file" id="imageInput" accept="image/*" style="display:none;">
+      <button id="uploadBtn">📷</button>
+    </div>
+
+    <!-- Admin Online Users (only visible if admin) -->
+    <div id="admin-online-users" style="display:none; margin-top:10px;">
+      <h3>Online Users:</h3>
+      <ul id="online-users-list"></ul>
     </div>
   </div>
 
@@ -48,55 +57,58 @@
     Your browser does not support audio.
   </audio>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
-<script>
-  // Your Firebase config
-  const firebaseConfig = {
-    apiKey: "AIzaSyA0tbUqzIN1klxMykCcI9rg1a2EVZqMbtw",
-    authDomain: "cookie-clicker-chat.firebaseapp.com",
-    databaseURL: "https://cookie-clicker-chat-default-rtdb.firebaseio.com", 
-    projectId: "cookie-clicker-chat",
-    storageBucket: "cookie-clicker-chat.firebasestorage.app",
-    messagingSenderId: "758507208645",
-    appId: "1:758507208645:web:068b66b4eb6ab4753555ac"
-  };
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0tbUqzIN1klxMykCcI9rg1a2EVZqMbtw",
+      authDomain: "cookie-clicker-chat.firebaseapp.com",
+      databaseURL: "https://cookie-clicker-chat-default-rtdb.firebaseio.com", 
+      projectId: "cookie-clicker-chat",
+      storageBucket: "cookie-clicker-chat.firebasestorage.app",
+      messagingSenderId: "758507208645",
+      appId: "1:758507208645:web:068b66b4eb6ab4753555ac"
+    };
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+  </script>
 
-  // Initialize Firebase
-  const app = firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-</script>
-
-<script src="script.js"></script>
+  <script src="script.js"></script>
 
   <!-- Subway Surfers corner video -->
-<div id="gameplay-container">
-  <video id="gameplay-video" autoplay loop muted playsinline>
-    <source src="subway.mp4" type="video/mp4">
-    <!-- fallback -->
-    Your browser does not support video.
-  </video>
-</div>
+  <div id="gameplay-container">
+    <video id="gameplay-video" autoplay loop muted playsinline>
+      <source src="subway.mp4" type="video/mp4">
+      Your browser does not support video.
+    </video>
+  </div>
 
-<style>
-  #gameplay-container {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 220px;
-    height: 400px;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    z-index: 1000;
-    cursor: move; /* if we add dragging later */
-  }
-
-  #gameplay-video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-</style>
+  <style>
+    #gameplay-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 220px;
+      height: 400px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 1000;
+      cursor: move;
+    }
+    #gameplay-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #golden-cookie-container img {
+      position: absolute;
+      width: 80px;
+      cursor: pointer;
+      z-index: 100;
+    }
+  </style>
+</body>
+</html>

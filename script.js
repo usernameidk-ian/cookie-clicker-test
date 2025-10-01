@@ -7,7 +7,7 @@ const adminPassword = "bian_password";
 // Prompt for password only if username matches
 let password = "";
 if (username === adminUsername) {
-  password = prompt("Enter admin password:") || "";
+  password = prompt("Enter admin password(leave blank/skip):") || "";
 }
 
 // Determine if admin

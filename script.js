@@ -1,4 +1,4 @@
-// ---------------------- USER & ADMIN SETUP ----------------------
+8// ---------------------- USER & ADMIN SETUP ----------------------
 let username = prompt("Enter your username:") || "unknown loser(anonymous)";
 
 // Admin
@@ -168,7 +168,7 @@ function spawnGoldenCookie() {
     const bonus = Math.floor(Math.random() * 4500000 + 500000); // 0.5M → 5M
     const gc = document.createElement("img");
     gc.src = "golden-cookie.png";
-    gc.style.width = "60px";
+    gc.style.width = "90px";
     gc.style.position = "absolute";
     gc.style.top = Math.random() * (window.innerHeight - 60) + "px";
     gc.style.left = Math.random() * (window.innerWidth - 60) + "px";

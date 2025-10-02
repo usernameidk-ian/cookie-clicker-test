@@ -1,4 +1,4 @@
-8// ---------------------- USER & ADMIN SETUP ----------------------
+// ---------------------- USER & ADMIN SETUP ----------------------
 let username = prompt("Enter your username:") || "unknown loser(anonymous)";
 
 // Admin
@@ -114,37 +114,12 @@ if (isAdmin) clearChatBtn.addEventListener("click", () => {
   if(confirm("Delete all messages?")) { db.ref("messages").remove(); chatMessages.innerHTML=""; }
 });
 
-// Image uploads
-const uploadBtn = document.getElementById("uploadBtn");
-const imageInput = document.getElementById("imageInput");
-const storage = firebase.storage();
-const storageRef = storage.ref();
-
-uploadBtn.addEventListener("click", () => imageInput.click());
-imageInput.addEventListener("change", e => {
-  const file = e.target.files[0];
-  if(!file) return;
-  const fileRef = storageRef.child(`images/${Date.now()}_${file.name}`);
-  fileRef.put(file).then(() => fileRef.getDownloadURL().then(url => {
-    messagesRef.push({ imageUrl: url, username, timestamp: Date.now() });
-  })).catch(err => console.error("Image upload failed:", err));
-  imageInput.value="";
-});
-
 // ---------------------- SHOW MESSAGES ----------------------
 messagesRef.on("child_added", snapshot => {
   const msg = snapshot.val();
   const p = document.createElement("p");
 
   if(msg.text) { p.textContent = `${msg.username}: ${msg.text}`; p.style.color = stringToColor(msg.username); }
-  if(msg.imageUrl) { 
-    const img = document.createElement("img");
-    img.src = msg.imageUrl;
-    img.style.maxWidth="150px";
-    img.style.display="block";
-    img.style.marginTop="5px";
-    p.appendChild(img);
-  }
 
   if(isAdmin){
     const deleteBtn = document.createElement("button");
@@ -165,7 +140,7 @@ document.body.appendChild(goldenCookieContainer);
 
 function spawnGoldenCookie() {
   if (Math.random() < 0.1) {
-    const bonus = Math.floor(Math.random() * 4500000 + 500000); // 0.5M → 5M
+    const bonus = Math.floor(Math.random() * (20000000 - 500000 + 1) + 500000); // 0.5M → 20M
     const gc = document.createElement("img");
     gc.src = "golden-cookie.png";
     gc.style.width = "60px";

@@ -1,4 +1,4 @@
-8// ---------------------- USER & ADMIN SETUP ----------------------
+// ---------------------- USER & ADMIN SETUP ----------------------
 let username = prompt("Enter your username:") || "unknown loser(anonymous)";
 
 // Admin
@@ -6,7 +6,7 @@ const adminUsername = "bian";
 const adminPassword = "bian_password";
 
 let password = "";
-if (username === adminUsername) password = prompt("Enter admin password(leave blank/skip):") || "";
+if (username === adminUsername) password = prompt("Enter admin password (leave blank/skip):") || "";
 
 const isAdmin = username === adminUsername && password === adminPassword;
 
@@ -35,6 +35,9 @@ let upgrades = {
   spaceStation: { cost: 1000000, cps: 50000 },
   galaxyFactory: { cost: 5000000, cps: 250000 },
   timeMachine: { cost: 20000000, cps: 1000000 },
+  quantumOven: { cost: 100000000, cps: 5000000 },
+  alienFarm: { cost: 500000000, cps: 20000000 },
+  cookieversePortal: { cost: 2000000000, cps: 100000000 }
 };
 
 const scoreDisplay = document.getElementById("score");
@@ -114,7 +117,7 @@ if (isAdmin) clearChatBtn.addEventListener("click", () => {
   if(confirm("Delete all messages?")) { db.ref("messages").remove(); chatMessages.innerHTML=""; }
 });
 
-// Image uploads
+// ---------------------- IMAGE UPLOAD ----------------------
 const uploadBtn = document.getElementById("uploadBtn");
 const imageInput = document.getElementById("imageInput");
 const storage = firebase.storage();
@@ -159,13 +162,11 @@ messagesRef.on("child_added", snapshot => {
 });
 
 // ---------------------- GOLDEN COOKIE ----------------------
-const goldenCookieContainer = document.createElement("div");
-goldenCookieContainer.id = "golden-cookie-container";
-document.body.appendChild(goldenCookieContainer);
+const goldenCookieContainer = document.getElementById("golden-cookie-container");
 
 function spawnGoldenCookie() {
   if (Math.random() < 0.1) {
-    const bonus = Math.floor(Math.random() * 4500000 + 500000); // 0.5M → 5M
+    const bonus = Math.floor(Math.random() * 19500000 + 500000); // 0.5M → 20M
     const gc = document.createElement("img");
     gc.src = "golden-cookie.png";
     gc.style.width = "60px";
@@ -199,3 +200,19 @@ function spawnGoldenCookie() {
 }
 setInterval(spawnGoldenCookie, 30000);
 
+// ---------------------- RESET ALL PLAYERS ----------------------
+function resetAllPlayers() {
+  if (isAdmin) {
+    if(confirm("Are you sure you want to reset everyone’s cookies and cps?")) {
+      localStorage.clear();
+      db.ref("messages").remove();
+      score = 0;
+      cps = 0;
+      for (const key in upgrades) upgrades[key].cost = Math.max(10, Math.floor(upgrades[key].cost/1.5));
+      updateDisplay();
+      alert("All players have been reset!");
+    }
+  } else {
+    alert("Only the admin can do this!");
+  }
+}

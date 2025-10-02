@@ -1,27 +1,23 @@
-// ---------------------- USER & ADMIN SETUP ----------------------
-let username = prompt("Enter your username:") || "unknown";
+8// ---------------------- USER & ADMIN SETUP ----------------------
+let username = prompt("Enter your username:") || "unknown loser(anonymous)";
 
+// Admin
 const adminUsername = "bian";
 const adminPassword = "bian_password";
 
 let password = "";
-if (username === adminUsername) {
-  password = prompt("Enter admin password (leave blank to skip):") || "";
-}
+if (username === adminUsername) password = prompt("Enter admin password(leave blank/skip):") || "";
 
 const isAdmin = username === adminUsername && password === adminPassword;
 
 function stringToColor(str) {
   let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
   let color = "#";
-  for (let i = 0; i < 3; i++) {
-    color += ("00" + ((hash >> (i * 8)) & 0xFF).toString(16)).slice(-2);
-  }
+  for (let i = 0; i < 3; i++) color += ("00" + ((hash >> (i * 8)) & 0xFF).toString(16)).slice(-2);
   return color;
 }
+
 const userColor = stringToColor(username);
 
 // ---------------------- COOKIE CLICKER ----------------------
@@ -162,36 +158,14 @@ messagesRef.on("child_added", snapshot => {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
-// ---------------------- RESET ALL PLAYERS ----------------------
-function resetAllPlayers() {
-  if (!isAdmin) return;
-  if (confirm("Reset everyone's cookies and CPS?")) {
-    db.ref("players").remove(); // clears everyone’s saved stats
-    localStorage.clear();
-    score = 0; cps = 0; upgrades = {
-      cursor: { cost: 15, cps: 1 },
-      auto: { cost: 50, cps: 2 },
-      grandma: { cost: 100, cps: 5 },
-      farm: { cost: 500, cps: 20 },
-      factory: { cost: 2000, cps: 100 },
-      mine: { cost: 10000, cps: 500 },
-      bank: { cost: 50000, cps: 2500 },
-      lab: { cost: 200000, cps: 10000 },
-      spaceStation: { cost: 1000000, cps: 50000 },
-      galaxyFactory: { cost: 5000000, cps: 250000 },
-      timeMachine: { cost: 20000000, cps: 1000000 },
-    };
-    updateDisplay();
-    alert("All players reset!");
-  }
-}
-
 // ---------------------- GOLDEN COOKIE ----------------------
-const goldenCookieContainer = document.getElementById("golden-cookie-container");
+const goldenCookieContainer = document.createElement("div");
+goldenCookieContainer.id = "golden-cookie-container";
+document.body.appendChild(goldenCookieContainer);
 
 function spawnGoldenCookie() {
   if (Math.random() < 0.1) {
-    const bonus = Math.floor(Math.random() * 19500000 + 500000); // 0.5M → 20M
+    const bonus = Math.floor(Math.random() * 4500000 + 500000); // 0.5M → 5M
     const gc = document.createElement("img");
     gc.src = "golden-cookie.png";
     gc.style.width = "60px";

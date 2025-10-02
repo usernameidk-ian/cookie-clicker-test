@@ -1,173 +1,226 @@
-// --- USER LOGIN ---
-let username = prompt("Enter your username:") || "guest" + Math.floor(Math.random() * 1000);
-window.username = username; // expose globally for admin check
+// ---------------------- USER & ADMIN SETUP ----------------------
+let username = prompt("Enter your username:") || "unknown";
 
-// --- GAME VARIABLES ---
-let cookies = 0;
+const adminUsername = "bian";
+const adminPassword = "bian_password";
+
+let password = "";
+if (username === adminUsername) {
+  password = prompt("Enter admin password (leave blank to skip):") || "";
+}
+
+const isAdmin = username === adminUsername && password === adminPassword;
+
+function stringToColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = "#";
+  for (let i = 0; i < 3; i++) {
+    color += ("00" + ((hash >> (i * 8)) & 0xFF).toString(16)).slice(-2);
+  }
+  return color;
+}
+const userColor = stringToColor(username);
+
+// ---------------------- COOKIE CLICKER ----------------------
+let score = 0;
 let cps = 0;
-
-const upgrades = [
-  { name: "Cursor", cps: 1, cost: 15 },
-  { name: "Auto Clicker", cps: 2, cost: 50 },
-  { name: "Grandma", cps: 5, cost: 100 },
-  { name: "Farm", cps: 20, cost: 500 },
-  { name: "Factory", cps: 100, cost: 2000 },
-  // NEW upgrades
-  { name: "Mine", cps: 500, cost: 10000 },
-  { name: "Bank", cps: 2000, cost: 50000 },
-  { name: "Temple", cps: 10000, cost: 200000 },
-  { name: "Wizard Tower", cps: 50000, cost: 1000000 },
-  { name: "Portal", cps: 250000, cost: 10000000 }
-];
-
-// --- SHOP RENDER ---
-const shopDiv = document.getElementById("shop-items");
-upgrades.forEach((upg, i) => {
-  const btn = document.createElement("button");
-  btn.id = "buy" + i;
-  btn.innerText = `${upg.name} (+${upg.cps} CPS) — Cost: ${upg.cost}`;
-  btn.onclick = () => buyUpgrade(i);
-  shopDiv.appendChild(btn);
-});
-
-// --- COOKIE CLICK ---
-document.getElementById("cookie").addEventListener("click", () => {
-  cookies++;
-  updateScore();
-  saveData();
-});
-
-// --- UPGRADE BUYING ---
-function buyUpgrade(i) {
-  const upg = upgrades[i];
-  if (cookies >= upg.cost) {
-    cookies -= upg.cost;
-    cps += upg.cps;
-    upg.cost = Math.floor(upg.cost * 1.5);
-    document.getElementById("buy" + i).innerText = `${upg.name} (+${upg.cps} CPS) — Cost: ${upg.cost}`;
-    updateScore();
-    saveData();
-  }
-}
-
-// --- UPDATE UI ---
-function updateScore() {
-  document.getElementById("score").innerText = cookies;
-  document.getElementById("cps").innerText = cps;
-}
-
-// --- AUTO INCREMENT ---
-setInterval(() => {
-  cookies += cps;
-  updateScore();
-  saveData();
-}, 1000);
-
-// --- FIREBASE SAVE/LOAD ---
-function saveData() {
-  db.ref("players/" + username).set({
-    cookies,
-    cps
-  });
-}
-
-// Load player data
-db.ref("players/" + username).on("value", snap => {
-  const data = snap.val();
-  if (data) {
-    cookies = data.cookies || 0;
-    cps = data.cps || 0;
-    updateScore();
-  }
-});
-
-// --- GOLDEN COOKIE ---
-setInterval(() => {
-  if (Math.random() < 0.2) { // 20% chance
-    const golden = document.createElement("div");
-    golden.innerText = "🌟";
-    golden.style.position = "absolute";
-    golden.style.left = Math.random() * window.innerWidth + "px";
-    golden.style.top = Math.random() * window.innerHeight + "px";
-    golden.style.fontSize = "40px";
-    golden.style.cursor = "pointer";
-    document.body.appendChild(golden);
-    golden.onclick = () => {
-      cookies += 1000000; // 1 million cookies
-      updateScore();
-      saveData();
-      golden.remove();
-    };
-    setTimeout(() => golden.remove(), 7000);
-  }
-}, 15000);
-
-// --- CHAT SYSTEM ---
-const chatBox = document.getElementById("chat-messages");
-document.getElementById("send-chat").addEventListener("click", sendMessage);
-
-function sendMessage() {
-  const msg = document.getElementById("chat-input").value;
-  if (!msg) return;
-  db.ref("chat").push({
-    user: username,
-    text: msg,
-    type: "text"
-  });
-  document.getElementById("chat-input").value = "";
-}
-
-db.ref("chat").on("child_added", snap => {
-  const msg = snap.val();
-  const div = document.createElement("div");
-  if (msg.type === "text") {
-    div.innerText = `${msg.user}: ${msg.text}`;
-  } else if (msg.type === "image") {
-    const img = document.createElement("img");
-    img.src = msg.url;
-    img.style.maxWidth = "150px";
-    div.innerText = msg.user + ": ";
-    div.appendChild(img);
-  }
-  chatBox.appendChild(div);
-  chatBox.scrollTop = chatBox.scrollHeight;
-});
-
-// Clear chat (only for admin)
-document.getElementById("clear-chat").onclick = () => {
-  if (username === "bian") db.ref("chat").remove();
+let upgrades = {
+  cursor: { cost: 15, cps: 1 },
+  auto: { cost: 50, cps: 2 },
+  grandma: { cost: 100, cps: 5 },
+  farm: { cost: 500, cps: 20 },
+  factory: { cost: 2000, cps: 100 },
+  mine: { cost: 10000, cps: 500 },
+  bank: { cost: 50000, cps: 2500 },
+  lab: { cost: 200000, cps: 10000 },
+  spaceStation: { cost: 1000000, cps: 50000 },
+  galaxyFactory: { cost: 5000000, cps: 250000 },
+  timeMachine: { cost: 20000000, cps: 1000000 },
 };
-if (username === "bian") document.getElementById("clear-chat").style.display = "inline-block";
 
-// --- IMAGE UPLOAD ---
-document.getElementById("uploadBtn").onclick = () => {
-  document.getElementById("imageInput").click();
-};
-document.getElementById("imageInput").onchange = e => {
+const scoreDisplay = document.getElementById("score");
+const cpsDisplay = document.getElementById("cps");
+const cookie = document.getElementById("cookie");
+
+function updateDisplay() {
+  scoreDisplay.textContent = score.toLocaleString();
+  cpsDisplay.textContent = cps.toLocaleString();
+  for (const key in upgrades) {
+    const btn = document.getElementById("buy" + key.charAt(0).toUpperCase() + key.slice(1));
+    if (btn) btn.textContent = `${key.charAt(0).toUpperCase() + key.slice(1)} (+${upgrades[key].cps} CPS) — Cost: ${upgrades[key].cost.toLocaleString()}`;
+  }
+}
+
+// Cookie click
+cookie.addEventListener("click", () => { score++; updateDisplay(); });
+
+// Buy upgrades
+function buyUpgrade(type) {
+  let upgrade = upgrades[type];
+  if (score >= upgrade.cost) {
+    score -= upgrade.cost;
+    cps += upgrade.cps;
+    upgrade.cost = Math.floor(upgrade.cost * 1.5);
+    updateDisplay();
+  }
+}
+
+Object.keys(upgrades).forEach(name => {
+  const btn = document.getElementById("buy" + name.charAt(0).toUpperCase() + name.slice(1));
+  if(btn) btn.addEventListener("click", () => buyUpgrade(name));
+});
+
+// CPS loop
+setInterval(() => { score += cps; updateDisplay(); }, 1000);
+
+// Save/load progress
+setInterval(() => {
+  localStorage.setItem("score", score);
+  localStorage.setItem("cps", cps);
+  localStorage.setItem("upgrades", JSON.stringify(upgrades));
+}, 2000);
+
+window.addEventListener("load", () => {
+  if (localStorage.getItem("score")) score = parseInt(localStorage.getItem("score"));
+  if (localStorage.getItem("cps")) cps = parseInt(localStorage.getItem("cps"));
+  if (localStorage.getItem("upgrades")) upgrades = JSON.parse(localStorage.getItem("upgrades"));
+  updateDisplay();
+});
+
+// ---------------------- MUSIC ----------------------
+document.addEventListener("click", () => {
+  const bgm = document.getElementById("bgm");
+  if (bgm.paused) bgm.play().catch(() => {});
+}, { once: true });
+
+// ---------------------- CHAT ----------------------
+const chatMessages = document.getElementById("chat-messages");
+const chatInput = document.getElementById("chat-input");
+const sendChat = document.getElementById("send-chat");
+const messagesRef = db.ref("messages");
+const clearChatBtn = document.getElementById("clear-chat");
+
+// Send message
+sendChat.addEventListener("click", () => {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  messagesRef.push({ text, username, timestamp: Date.now() });
+  chatInput.value = "";
+});
+chatInput.addEventListener("keypress", e => { if(e.key==="Enter") sendChat.click(); });
+
+// Admin features
+if (isAdmin) clearChatBtn.style.display = "inline-block";
+if (isAdmin) clearChatBtn.addEventListener("click", () => {
+  if(confirm("Delete all messages?")) { db.ref("messages").remove(); chatMessages.innerHTML=""; }
+});
+
+// Image uploads
+const uploadBtn = document.getElementById("uploadBtn");
+const imageInput = document.getElementById("imageInput");
+const storage = firebase.storage();
+const storageRef = storage.ref();
+
+uploadBtn.addEventListener("click", () => imageInput.click());
+imageInput.addEventListener("change", e => {
   const file = e.target.files[0];
-  if (!file) return;
-  const ref = storage.ref("chatImages/" + Date.now() + "-" + file.name);
-  ref.put(file).then(() => {
-    ref.getDownloadURL().then(url => {
-      db.ref("chat").push({
-        user: username,
-        url,
-        type: "image"
-      });
-    });
-  });
-};
+  if(!file) return;
+  const fileRef = storageRef.child(`images/${Date.now()}_${file.name}`);
+  fileRef.put(file).then(() => fileRef.getDownloadURL().then(url => {
+    messagesRef.push({ imageUrl: url, username, timestamp: Date.now() });
+  })).catch(err => console.error("Image upload failed:", err));
+  imageInput.value="";
+});
 
-// --- RESET ALL PLAYERS (ADMIN) ---
+// ---------------------- SHOW MESSAGES ----------------------
+messagesRef.on("child_added", snapshot => {
+  const msg = snapshot.val();
+  const p = document.createElement("p");
+
+  if(msg.text) { p.textContent = `${msg.username}: ${msg.text}`; p.style.color = stringToColor(msg.username); }
+  if(msg.imageUrl) { 
+    const img = document.createElement("img");
+    img.src = msg.imageUrl;
+    img.style.maxWidth="150px";
+    img.style.display="block";
+    img.style.marginTop="5px";
+    p.appendChild(img);
+  }
+
+  if(isAdmin){
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent="❌";
+    deleteBtn.style.marginLeft="10px";
+    deleteBtn.addEventListener("click", ()=>{ messagesRef.child(snapshot.key).remove(); p.remove(); });
+    p.appendChild(deleteBtn);
+  }
+
+  chatMessages.appendChild(p);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+});
+
+// ---------------------- RESET ALL PLAYERS ----------------------
 function resetAllPlayers() {
-  if (username !== "bian") return;
-  db.ref("players").once("value", snapshot => {
-    snapshot.forEach(child => {
-      db.ref("players/" + child.key).set({
-        cookies: 0,
-        cps: 0
-      });
-    });
-  });
-  alert("All players have been reset!");
+  if (!isAdmin) return;
+  if (confirm("Reset everyone's cookies and CPS?")) {
+    db.ref("players").remove(); // clears everyone’s saved stats
+    localStorage.clear();
+    score = 0; cps = 0; upgrades = {
+      cursor: { cost: 15, cps: 1 },
+      auto: { cost: 50, cps: 2 },
+      grandma: { cost: 100, cps: 5 },
+      farm: { cost: 500, cps: 20 },
+      factory: { cost: 2000, cps: 100 },
+      mine: { cost: 10000, cps: 500 },
+      bank: { cost: 50000, cps: 2500 },
+      lab: { cost: 200000, cps: 10000 },
+      spaceStation: { cost: 1000000, cps: 50000 },
+      galaxyFactory: { cost: 5000000, cps: 250000 },
+      timeMachine: { cost: 20000000, cps: 1000000 },
+    };
+    updateDisplay();
+    alert("All players reset!");
+  }
 }
+
+// ---------------------- GOLDEN COOKIE ----------------------
+const goldenCookieContainer = document.getElementById("golden-cookie-container");
+
+function spawnGoldenCookie() {
+  if (Math.random() < 0.1) {
+    const bonus = Math.floor(Math.random() * 19500000 + 500000); // 0.5M → 20M
+    const gc = document.createElement("img");
+    gc.src = "golden-cookie.png";
+    gc.style.width = "60px";
+    gc.style.position = "absolute";
+    gc.style.top = Math.random() * (window.innerHeight - 60) + "px";
+    gc.style.left = Math.random() * (window.innerWidth - 60) + "px";
+    gc.style.cursor = "pointer";
+    gc.style.zIndex = 10000;
+    gc.style.pointerEvents = "auto";
+
+    let dx = (Math.random() * 2 + 1) * (Math.random() < 0.5 ? -1 : 1);
+    let dy = (Math.random() * 2 + 1) * (Math.random() < 0.5 ? -1 : 1);
+    const moveInterval = setInterval(() => {
+      let top = parseFloat(gc.style.top);
+      let left = parseFloat(gc.style.left);
+      if (top + dy < 0 || top + dy > window.innerHeight - 60) dy *= -1;
+      if (left + dx < 0 || left + dx > window.innerWidth - 60) dx *= -1;
+      gc.style.top = top + dy + "px";
+      gc.style.left = left + dx + "px";
+    }, 30);
+
+    gc.addEventListener("click", () => {
+      score += bonus; updateDisplay();
+      messagesRef.push({ text:`✨ ${username} clicked a Golden Cookie! +${bonus.toLocaleString()} cookies!`, username:"System", timestamp:Date.now() });
+      clearInterval(moveInterval); gc.remove();
+    });
+
+    goldenCookieContainer.appendChild(gc);
+    setTimeout(() => { clearInterval(moveInterval); gc.remove(); }, 15000);
+  }
+}
+setInterval(spawnGoldenCookie, 30000);

@@ -1,20 +1,31 @@
 // ---------------------- USER & ADMIN SETUP ----------------------
 let username = prompt("Enter your username:") || "unknown loser(anonymous)";
 
-// Admin
+// Admin info
 const adminUsername = "bian";
 const adminPassword = "hehehaha123";
 
+// Check if user tries to use admin name
 let password = "";
-if (username === adminUsername) password = prompt("Enter admin password(leave blank/skip):") || "";
+if (username === adminUsername) {
+  password = prompt("Enter admin password:");
+  if (password !== adminPassword) {
+    alert("Wrong password! You are NOT the real bian 😤");
+    username = "fake bian (lol)";
+  }
+}
 
+// Verify admin status
 const isAdmin = username === adminUsername && password === adminPassword;
 
+// Give each user a unique color based on name
 function stringToColor(str) {
   let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < str.length; i++)
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
   let color = "#";
-  for (let i = 0; i < 3; i++) color += ("00" + ((hash >> (i * 8)) & 0xFF).toString(16)).slice(-2);
+  for (let i = 0; i < 3; i++)
+    color += ("00" + ((hash >> (i * 8)) & 0xff).toString(16)).slice(-2);
   return color;
 }
 
@@ -45,13 +56,21 @@ function updateDisplay() {
   scoreDisplay.textContent = score.toLocaleString();
   cpsDisplay.textContent = cps.toLocaleString();
   for (const key in upgrades) {
-    const btn = document.getElementById("buy" + key.charAt(0).toUpperCase() + key.slice(1));
-    if (btn) btn.textContent = `${key.charAt(0).toUpperCase() + key.slice(1)} (+${upgrades[key].cps} CPS) — Cost: ${upgrades[key].cost.toLocaleString()}`;
+    const btn = document.getElementById(
+      "buy" + key.charAt(0).toUpperCase() + key.slice(1)
+    );
+    if (btn)
+      btn.textContent = `${key.charAt(0).toUpperCase() + key.slice(1)} (+${
+        upgrades[key].cps
+      } CPS) — Cost: ${upgrades[key].cost.toLocaleString()}`;
   }
 }
 
 // Cookie click
-cookie.addEventListener("click", () => { score++; updateDisplay(); });
+cookie.addEventListener("click", () => {
+  score++;
+  updateDisplay();
+});
 
 // Buy upgrades
 function buyUpgrade(type) {
@@ -64,13 +83,18 @@ function buyUpgrade(type) {
   }
 }
 
-Object.keys(upgrades).forEach(name => {
-  const btn = document.getElementById("buy" + name.charAt(0).toUpperCase() + name.slice(1));
-  if(btn) btn.addEventListener("click", () => buyUpgrade(name));
+Object.keys(upgrades).forEach((name) => {
+  const btn = document.getElementById(
+    "buy" + name.charAt(0).toUpperCase() + name.slice(1)
+  );
+  if (btn) btn.addEventListener("click", () => buyUpgrade(name));
 });
 
 // CPS loop
-setInterval(() => { score += cps; updateDisplay(); }, 1000);
+setInterval(() => {
+  score += cps;
+  updateDisplay();
+}, 1000);
 
 // Save/load progress
 setInterval(() => {
@@ -80,17 +104,23 @@ setInterval(() => {
 }, 2000);
 
 window.addEventListener("load", () => {
-  if (localStorage.getItem("score")) score = parseInt(localStorage.getItem("score"));
+  if (localStorage.getItem("score"))
+    score = parseInt(localStorage.getItem("score"));
   if (localStorage.getItem("cps")) cps = parseInt(localStorage.getItem("cps"));
-  if (localStorage.getItem("upgrades")) upgrades = JSON.parse(localStorage.getItem("upgrades"));
+  if (localStorage.getItem("upgrades"))
+    upgrades = JSON.parse(localStorage.getItem("upgrades"));
   updateDisplay();
 });
 
 // ---------------------- MUSIC ----------------------
-document.addEventListener("click", () => {
-  const bgm = document.getElementById("bgm");
-  if (bgm.paused) bgm.play().catch(() => {});
-}, { once: true });
+document.addEventListener(
+  "click",
+  () => {
+    const bgm = document.getElementById("bgm");
+    if (bgm.paused) bgm.play().catch(() => {});
+  },
+  { once: true }
+);
 
 // ---------------------- CHAT ----------------------
 const chatMessages = document.getElementById("chat-messages");
@@ -106,26 +136,38 @@ sendChat.addEventListener("click", () => {
   messagesRef.push({ text, username, timestamp: Date.now() });
   chatInput.value = "";
 });
-chatInput.addEventListener("keypress", e => { if(e.key==="Enter") sendChat.click(); });
+chatInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendChat.click();
+});
 
 // Admin features
 if (isAdmin) clearChatBtn.style.display = "inline-block";
-if (isAdmin) clearChatBtn.addEventListener("click", () => {
-  if(confirm("Delete all messages?")) { db.ref("messages").remove(); chatMessages.innerHTML=""; }
-});
+if (isAdmin)
+  clearChatBtn.addEventListener("click", () => {
+    if (confirm("Delete all messages?")) {
+      db.ref("messages").remove();
+      chatMessages.innerHTML = "";
+    }
+  });
 
 // ---------------------- SHOW MESSAGES ----------------------
-messagesRef.on("child_added", snapshot => {
+messagesRef.on("child_added", (snapshot) => {
   const msg = snapshot.val();
   const p = document.createElement("p");
 
-  if(msg.text) { p.textContent = `${msg.username}: ${msg.text}`; p.style.color = stringToColor(msg.username); }
+  if (msg.text) {
+    p.textContent = `${msg.username}: ${msg.text}`;
+    p.style.color = stringToColor(msg.username);
+  }
 
-  if(isAdmin){
+  if (isAdmin) {
     const deleteBtn = document.createElement("button");
-    deleteBtn.textContent="❌";
-    deleteBtn.style.marginLeft="10px";
-    deleteBtn.addEventListener("click", ()=>{ messagesRef.child(snapshot.key).remove(); p.remove(); });
+    deleteBtn.textContent = "❌";
+    deleteBtn.style.marginLeft = "10px";
+    deleteBtn.addEventListener("click", () => {
+      messagesRef.child(snapshot.key).remove();
+      p.remove();
+    });
     p.appendChild(deleteBtn);
   }
 
@@ -140,7 +182,9 @@ document.body.appendChild(goldenCookieContainer);
 
 function spawnGoldenCookie() {
   if (Math.random() < 0.1) {
-    const bonus = Math.floor(Math.random() * (20000000 - 500000 + 1) + 500000); // 0.5M → 20M
+    const bonus = Math.floor(
+      Math.random() * (20000000 - 500000 + 1) + 500000
+    ); // 0.5M → 20M
     const gc = document.createElement("img");
     gc.src = "golden-cookie.png";
     gc.style.width = "60px";
@@ -149,7 +193,6 @@ function spawnGoldenCookie() {
     gc.style.left = Math.random() * (window.innerWidth - 60) + "px";
     gc.style.cursor = "pointer";
     gc.style.zIndex = 10000;
-    gc.style.pointerEvents = "auto";
 
     let dx = (Math.random() * 2 + 1) * (Math.random() < 0.5 ? -1 : 1);
     let dy = (Math.random() * 2 + 1) * (Math.random() < 0.5 ? -1 : 1);
@@ -163,13 +206,22 @@ function spawnGoldenCookie() {
     }, 30);
 
     gc.addEventListener("click", () => {
-      score += bonus; updateDisplay();
-      messagesRef.push({ text:`✨ ${username} clicked a Golden Cookie! +${bonus.toLocaleString()} cookies!`, username:"System", timestamp:Date.now() });
-      clearInterval(moveInterval); gc.remove();
+      score += bonus;
+      updateDisplay();
+      messagesRef.push({
+        text: `✨ ${username} clicked a Golden Cookie! +${bonus.toLocaleString()} cookies!`,
+        username: "System",
+        timestamp: Date.now(),
+      });
+      clearInterval(moveInterval);
+      gc.remove();
     });
 
     goldenCookieContainer.appendChild(gc);
-    setTimeout(() => { clearInterval(moveInterval); gc.remove(); }, 15000);
+    setTimeout(() => {
+      clearInterval(moveInterval);
+      gc.remove();
+    }, 15000);
   }
 }
 setInterval(spawnGoldenCookie, 30000);

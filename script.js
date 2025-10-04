@@ -10,8 +10,8 @@ let password = "";
 if (username === adminUsername) {
   password = prompt("Enter admin password:");
   if (password !== adminPassword) {
-    alert("Wrong password! You are NOT the real bian 😤");
-    username = "fake bian (lol)";
+    alert("just kidding, you are NOT the real bian, loser. ");
+    username = "fake bian (loser)";
   }
 }
 

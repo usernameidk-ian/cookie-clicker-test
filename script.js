@@ -225,21 +225,3 @@ function spawnGoldenCookie() {
   }
 }
 setInterval(spawnGoldenCookie, 30000);
-
-
-// ---------------------- ONLINE USERS ----------------------
-const onlineRef = db.ref("online-users");
-const connectedRef = db.ref(".info/connected");
-connectedRef.on("value", (snap) => {
-  if (snap.val() === true) {
-    const userRef = onlineRef.push({ username });
-    userRef.onDisconnect().remove();
-  }
-});
-onlineRef.on("value", (snapshot) => {
-  const count = snapshot.numChildren();
-  const onlineDisplay = document.getElementById("online-count");
-  if (onlineDisplay) {
-    onlineDisplay.textContent = `Online: ${count} ${count === 1 ? "player" : "players"}`;
-  }
-});

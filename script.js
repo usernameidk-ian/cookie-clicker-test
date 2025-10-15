@@ -3,7 +3,7 @@ let username = prompt("Enter your username:") || "unknown loser(anonymous)";
 
 // Admin info
 const adminUsername = "bian";
-const adminPassword = "cookieturtle";
+const adminPassword = "hehehaha123";
 
 // Check if user tries to use admin name
 let password = "";

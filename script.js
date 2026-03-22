@@ -27,8 +27,7 @@ const siteSettingsRef   = db.ref('site_settings');
 
 
 // ============================================================
-// CUSTOM DIALOGS — replaces alert/confirm/prompt
-// (Google Sites blocks native browser dialogs)
+// CUSTOM DIALOGS
 // ============================================================
 function showAlert(message, onClose) {
   const ov = document.createElement('div');
@@ -41,7 +40,6 @@ function showAlert(message, onClose) {
   document.body.appendChild(ov);
   ov.querySelector('button').onclick = () => { ov.remove(); if(onClose) onClose(); };
 }
-
 function showConfirm(message, onYes, onNo) {
   const ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99000;display:flex;align-items:center;justify-content:center;';
@@ -55,9 +53,8 @@ function showConfirm(message, onYes, onNo) {
   </div>`;
   document.body.appendChild(ov);
   ov.querySelector('#dlg-yes').onclick = () => { ov.remove(); if(onYes) onYes(); };
-  ov.querySelector('#dlg-no' ).onclick = () => { ov.remove(); if(onNo)  onNo();  };
+  ov.querySelector('#dlg-no' ).onclick = () => { ov.remove(); if(onNo) onNo(); };
 }
-
 function showPrompt(message, defaultVal, onSubmit) {
   const ov = document.createElement('div');
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99000;display:flex;align-items:center;justify-content:center;';
@@ -80,28 +77,18 @@ function showPrompt(message, defaultVal, onSubmit) {
   ov.querySelector('#dlg-cx').onclick = cancel;
   inp.addEventListener('keydown', e => { if(e.key==='Enter') submit(); if(e.key==='Escape') cancel(); });
 }
-
-// Asks the user to confirm N times before calling onFinalYes
 function showMultiConfirm(message, timesLeft, onFinalYes) {
   if (timesLeft <= 0) { onFinalYes(); return; }
   const step = 6 - timesLeft;
   showConfirm(`(${step}/5) ${message}`, () => showMultiConfirm(message, timesLeft-1, onFinalYes), null);
 }
-
-// ============================================================
-// AUDIT LOG — writes events to Firebase for admin review
-// ============================================================
 function writeAuditLog(type, details) {
   auditLogRef.push({ type, details, ts: Date.now() });
 }
-
-// ============================================================
-// SITE SETTINGS — chat cooldown (stored in Firebase)
-// ============================================================
+// Site settings — chat cooldown
 let chatCooldownMs = 0;
 let sendCooldown   = false;
 let _cooldownTimer = null;
-
 function applySendCooldown() {
   if (isAdmin || chatCooldownMs <= 0) return;
   sendCooldown = true;
@@ -230,25 +217,57 @@ function completeLogin(uname, forceAdmin = false) {
     writeAuditLog('login', `${username} logged in`);
     if (isAdmin || admins[cleanName]) {
       setTimeout(setupAdminSettingsTab, 500);
-      // Admin session protection
       adminSessionRef.child(cleanName).once('value', sesSnap => {
         const existing = sesSnap.val();
         if (existing && existing.deviceID !== deviceID && Date.now() - existing.ts < 300000) {
           adminLoginReqRef.child(cleanName).set({ requestingDevice: deviceID, ts: Date.now() });
-          showAlert('⏳ Another device is logged in as this admin. Requesting approval...');
           writeAuditLog('admin_login_request', `${username} requested secondary login`);
+          // Show blocking "go back" — no OK button that lets them slip through
+          const ov = document.createElement('div');
+          ov.id = 'admin-wait-overlay';
+          ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:99000;display:flex;align-items:center;justify-content:center;';
+          ov.innerHTML = `<div style="background:#36393f;border:1px solid #4f545c;border-radius:10px;padding:24px;max-width:400px;width:92%;text-align:center;">
+            <p style="color:#fff;font-size:14px;margin:0 0 18px 0;">⏳ Another device is already logged into this admin account.<br>Waiting for approval from that device...</p>
+            <button id="admin-goback-btn" style="width:100%;padding:10px;background:#4f545c;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:14px;">← Go Back</button>
+          </div>`;
+          document.body.appendChild(ov);
+          document.getElementById('admin-goback-btn').onclick = () => {
+            ov.remove();
+            localStorage.removeItem('chat_logged_in_user');
+            username = ''; cleanName = ''; identityKey = ''; isAdmin = false;
+            authOverlay.style.display = 'flex';
+            viewChoice.style.display = 'block';
+            viewLogin.style.display = 'none';
+            viewReg.style.display = 'none';
+          };
           const respRef = adminLoginReqRef.child(cleanName + '_resp');
           respRef.on('value', respSnap => {
             const resp = respSnap.val();
             if (!resp) return;
             respRef.off(); respRef.remove();
+            const waitOv = document.getElementById('admin-wait-overlay');
             if (resp.approved) {
+              if (waitOv) waitOv.remove();
               adminSessionRef.child(cleanName).set({ deviceID, ts: Date.now() });
               adminSessionRef.child(cleanName).onDisconnect().remove();
             } else {
-              showAlert('❌ Login rejected by the active admin session.');
-              localStorage.removeItem('chat_logged_in_user');
-              setTimeout(() => location.reload(), 2500);
+              if (waitOv) waitOv.remove();
+              const ov2 = document.createElement('div');
+              ov2.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:99000;display:flex;align-items:center;justify-content:center;';
+              ov2.innerHTML = `<div style="background:#36393f;border:1px solid #4f545c;border-radius:10px;padding:24px;max-width:400px;width:92%;text-align:center;">
+                <p style="color:#ed4245;font-size:14px;margin:0 0 18px 0;">❌ Login rejected by the active admin session.</p>
+                <button style="width:100%;padding:10px;background:#4f545c;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:14px;">← Go Back</button>
+              </div>`;
+              document.body.appendChild(ov2);
+              ov2.querySelector('button').onclick = () => {
+                ov2.remove();
+                localStorage.removeItem('chat_logged_in_user');
+                username = ''; cleanName = ''; identityKey = ''; isAdmin = false;
+                authOverlay.style.display = 'flex';
+                viewChoice.style.display = 'block';
+                viewLogin.style.display = 'none';
+                viewReg.style.display = 'none';
+              };
             }
           });
         } else {
@@ -275,15 +294,13 @@ function completeLogin(uname, forceAdmin = false) {
         }
       });
     }
-
-    // AUTO-PRESENCE VERIFICATION: confirm presence entry has a username.
-    // If not, auto-reload (up to 3 times) so the user always appears in target selectors.
+    // AUTO-PRESENCE VERIFICATION
     const presenceRetries = parseInt(sessionStorage.getItem('presence_retries') || '0');
     setTimeout(() => {
       presenceRef.child(cleanName).once('value', snap => {
         const data = snap.val();
         if (!data || !data.username) {
-          if (presenceRetries < 3) {
+          if (presenceRetries < 5) {
             sessionStorage.setItem('presence_retries', String(presenceRetries + 1));
             location.reload();
           }
@@ -629,7 +646,7 @@ if (clearChatBtn) {
   });
 }
 
-// Soundboard Tabs — clears all tabs then activates the selected one
+// Soundboard Tabs
 function clearAllTabs() {
   ['tab-sounds','tab-jumps','tab-tools','tab-logs'].forEach(id => { const el=document.getElementById(id); if(el) el.classList.remove('active'); });
   ['sounds-content','jumps-content','tools-content','logs-content'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
@@ -640,13 +657,11 @@ if (tabSounds) {
 if (tabJumps) {
   tabJumps.onclick = () => { clearAllTabs(); tabJumps.classList.add('active'); jumpsContent.style.display='flex'; };
 }
-
 const tabTools = document.getElementById('tab-tools');
 const toolsContent = document.getElementById('tools-content');
 if (tabTools) {
   tabTools.onclick = () => { clearAllTabs(); tabTools.classList.add('active'); toolsContent.style.display='flex'; };
 }
-
 const tabLogs = document.getElementById('tab-logs');
 const logsContent = document.getElementById('logs-content');
 if (tabLogs) {
@@ -713,8 +728,6 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Inject sticky ✕ close button inside the panel — always reachable
-// even when the school clock is blocking the toggle button
 const memberPanelCloseBtn = document.createElement('button');
 memberPanelCloseBtn.textContent = '✕';
 memberPanelCloseBtn.style.cssText = 'position:sticky;top:4px;float:right;margin:4px 8px 0 0;background:none;border:none;color:#ed4245;font-size:18px;font-weight:bold;cursor:pointer;line-height:1;z-index:55;';
@@ -734,7 +747,6 @@ if (memberListBtn) {
   };
 }
 
-// Close member panel when clicking anywhere outside it
 document.addEventListener('click', (e) => {
   if (memberPanel.style.display !== 'none' &&
       !memberPanel.contains(e.target) &&
@@ -903,6 +915,7 @@ function checkRateLimit() {
 
 sendChat.addEventListener("click", () => {
   if (!username) return;
+  if (sendCooldown) return;
   const text = chatInput.value.trim();
   if (!text) return;
 
@@ -1015,8 +1028,6 @@ function createMessageElement(msg, msgKey) {
   }
 
   const p = document.createElement("p");
-
-  // Shadow timeout: admins see message dimmed; regular users see nothing; sender sees normally
   const isShadowed = msg.fingerprint && timeouts && timeouts[msg.fingerprint] &&
       timeouts[msg.fingerprint].until > Date.now() &&
       timeouts[msg.fingerprint].type === 'shadow';
@@ -1025,7 +1036,6 @@ function createMessageElement(msg, msgKey) {
     p.style.filter = 'grayscale(60%)';
     p.title = '🕶️ Shadow timed-out message (only you and the sender can see this)';
   }
-
   if (msg && msg.text) {
     const ts = msg.timestamp ? new Date(msg.timestamp) : new Date();
     const timeStr = ts.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -1083,11 +1093,7 @@ function createMessageElement(msg, msgKey) {
         showPrompt(`Normal timeout ${msg.username} for how many seconds?`, '', (duration) => {
             if (duration && !isNaN(duration)) {
                 const untilTime = Date.now() + (parseInt(duration) * 1000);
-                db.ref("timeouts").child(msg.fingerprint).set({ 
-                    until: untilTime,
-                    type: "normal",
-                    originalName: msg.username 
-                });
+                db.ref("timeouts").child(msg.fingerprint).set({ until: untilTime, type: "normal", originalName: msg.username });
                 writeAuditLog('timeout', `${username} timed out ${msg.username} for ${duration}s`);
             }
         });
@@ -1101,11 +1107,7 @@ function createMessageElement(msg, msgKey) {
         showPrompt(`Shadow timeout ${msg.username} for how many seconds?`, '', (duration) => {
             if (duration && !isNaN(duration)) {
                 const untilTime = Date.now() + (parseInt(duration) * 1000);
-                db.ref("timeouts").child(msg.fingerprint).set({ 
-                    until: untilTime,
-                    type: "shadow",
-                    originalName: msg.username 
-                });
+                db.ref("timeouts").child(msg.fingerprint).set({ until: untilTime, type: "shadow", originalName: msg.username });
                 writeAuditLog('shadow_timeout', `${username} shadow-timed out ${msg.username} for ${duration}s`);
             }
         });
@@ -1164,10 +1166,8 @@ function updateTimeoutDisplay() {
   function tick() {
     const seconds = Math.ceil(Math.max(0, myStatus.until - Date.now()) / 1000);
     const isShadow = myStatus.type === 'shadow';
-    timerEl.textContent = seconds > 0 
-      ? (isShadow ? `Shadow timeout: ${seconds}s (you can still chat)` : `Your device is timed out for ${seconds}s more.`)
-      : "";
-    timerEl.style.color = isShadow ? '#c724c7' : '#ffb4b4';
+    timerEl.textContent = seconds > 0 && !isShadow ? `Your device is timed out for ${seconds}s more.` : "";
+    timerEl.style.color = '#ffb4b4';
     if (seconds <= 0) {
         clearInterval(timeoutInterval);
         timerEl.textContent = "";
@@ -1341,7 +1341,7 @@ function showTargetSelector(callback) {
   document.body.appendChild(modal);
 
   const list = modal.querySelector('#target-list');
-  const online = Object.keys(allPresence).filter(k => Date.now() - allPresence[k].lastSeen < 180000);
+  const online = Object.keys(allPresence).filter(k => allPresence[k] && allPresence[k].username && Date.now() - allPresence[k].lastSeen < 180000);
   online.forEach(k => {
     const p = allPresence[k];
     const b = document.createElement('button');
@@ -1414,7 +1414,7 @@ targetedSfxRef.on('child_added', snap => {
 
 
 // ============================================================
-// SITE SETTINGS LISTENER — reads cooldown from Firebase
+// SITE SETTINGS LISTENER
 // ============================================================
 siteSettingsRef.on('value', snap => {
   const data = snap.val() || {};
@@ -1422,7 +1422,7 @@ siteSettingsRef.on('value', snap => {
 });
 
 // ============================================================
-// FORCE REFRESH — admin can reload a user's tab via Firebase
+// FORCE REFRESH
 // ============================================================
 forceRefreshRef.on('child_added', snap => {
   const d = snap.val();
@@ -1431,7 +1431,6 @@ forceRefreshRef.on('child_added', snap => {
     location.reload();
   }
 });
-
 window.forceRefreshUser = function() {
   showTargetSelector(user => {
     if (user) {
@@ -1442,7 +1441,7 @@ window.forceRefreshUser = function() {
 };
 
 // ============================================================
-// FORCE LOGOUT — admin can log out a user or everyone
+// FORCE LOGOUT
 // ============================================================
 forceLogoutRef.on('child_added', snap => {
   const d = snap.val();
@@ -1452,7 +1451,6 @@ forceLogoutRef.on('child_added', snap => {
     location.reload();
   }
 });
-
 window.logoutSpecificUser = function() {
   showTargetSelector(user => {
     if (user) {
@@ -1461,7 +1459,6 @@ window.logoutSpecificUser = function() {
     }
   });
 };
-
 window.logoutAll = function() {
   showMultiConfirm('⚠️ Log out ALL users from the website?', 5, () => {
     forceLogoutRef.push({ target: 'ALL', ts: Date.now() });
@@ -1470,7 +1467,7 @@ window.logoutAll = function() {
 };
 
 // ============================================================
-// AUDIT LOG TAB — load entries for admins
+// AUDIT LOG TAB
 // ============================================================
 if (isAdmin) {
   auditLogRef.limitToLast(80).on('child_added', snap => {
@@ -1491,45 +1488,37 @@ if (isAdmin) {
 }
 
 // ============================================================
-// ADMIN SETTINGS TAB — injected into Settings modal for admins
+// ADMIN SETTINGS TAB (injected into Settings modal)
 // ============================================================
 function setupAdminSettingsTab() {
   const modalBody = document.querySelector('#settings-modal .modal-body');
   if (!modalBody || document.getElementById('admin-site-settings')) return;
-
   const section = document.createElement('div');
   section.id = 'admin-site-settings';
   section.innerHTML = `
     <hr style="border-top:1px solid #4f545c;border-bottom:none;margin:20px 0;">
     <div style="color:#ffcc00;font-size:13px;font-weight:bold;margin-bottom:12px;">⚙️ Site Settings <span style="font-size:10px;color:#777;font-weight:normal;">(admin only)</span></div>
     <label style="color:#b9bbbe;font-size:12px;font-weight:bold;display:block;margin-bottom:6px;">Chat Cooldown: <span id="cooldown-val-label">0s</span></label>
-    <input type="range" id="cooldown-slider" min="0" max="100" value="0"
-           style="width:100%;accent-color:#ffcc00;margin-bottom:4px;cursor:pointer;">
+    <input type="range" id="cooldown-slider" min="0" max="100" value="0" style="width:100%;accent-color:#ffcc00;margin-bottom:4px;cursor:pointer;">
     <p style="color:#72767d;font-size:11px;margin:0 0 10px 0;">0 = disabled. Does not affect admins. Applies to text, GIFs, and emojis.</p>
     <div id="current-cooldown-display" style="color:#aaa;font-size:12px;margin-bottom:10px;"></div>
     <button id="save-cooldown-btn" style="width:100%;padding:10px;background:#5865F2;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">Save Cooldown</button>
   `;
   modalBody.appendChild(section);
-
   const slider = document.getElementById('cooldown-slider');
   const valLabel = document.getElementById('cooldown-val-label');
   const currentDisplay = document.getElementById('current-cooldown-display');
-
-  // Load current value
   siteSettingsRef.once('value', snap => {
     const val = (snap.val() || {}).chat_cooldown || 0;
-    slider.value = val;
-    valLabel.textContent = val + 's';
-    currentDisplay.textContent = val > 0 ? `Current: ${val}s cooldown between messages` : 'Current: No cooldown';
+    slider.value = val; valLabel.textContent = val + 's';
+    currentDisplay.textContent = val > 0 ? `Current: ${val}s cooldown` : 'Current: No cooldown';
   });
-
   slider.oninput = () => { valLabel.textContent = slider.value + 's'; };
-
   document.getElementById('save-cooldown-btn').onclick = () => {
     const val = parseInt(slider.value);
     siteSettingsRef.update({ chat_cooldown: val });
     writeAuditLog('settings_change', `${username} set chat cooldown to ${val}s`);
-    currentDisplay.textContent = val > 0 ? `Current: ${val}s cooldown between messages` : 'Current: No cooldown';
-    showAlert(`✅ Chat cooldown set to ${val} second${val !== 1 ? 's' : ''}.${val === 0 ? ' (disabled)' : ''}`);
+    currentDisplay.textContent = val > 0 ? `Current: ${val}s cooldown` : 'Current: No cooldown';
+    showAlert(`✅ Chat cooldown set to ${val}s.${val === 0 ? ' (disabled)' : ''}`);
   };
 }

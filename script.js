@@ -18,6 +18,100 @@ const presenceRef = db.ref('presence');
 const targetedSfxRef = db.ref('targeted_sfx');
 const jumpscaresRef = db.ref('jumpscares');
 const cursorRef = db.ref('cursors');
+const forceRefreshRef   = db.ref('force_refresh');
+const forceLogoutRef    = db.ref('force_logout');
+const auditLogRef       = db.ref('audit_log');
+const adminSessionRef   = db.ref('admin_sessions');
+const adminLoginReqRef  = db.ref('admin_login_requests');
+const siteSettingsRef   = db.ref('site_settings');
+
+
+// ============================================================
+// CUSTOM DIALOGS — replaces alert/confirm/prompt
+// (Google Sites blocks native browser dialogs)
+// ============================================================
+function showAlert(message, onClose) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99000;display:flex;align-items:center;justify-content:center;';
+  const msg = String(message).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  ov.innerHTML = `<div style="background:#36393f;border:1px solid #4f545c;border-radius:10px;padding:24px;max-width:400px;width:92%;box-shadow:0 5px 25px rgba(0,0,0,0.7);">
+    <p style="color:#fff;margin:0 0 18px 0;font-size:14px;line-height:1.55;white-space:pre-wrap;">${msg}</p>
+    <button style="width:100%;padding:10px;background:#ffcc00;color:#000;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:14px;">OK</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('button').onclick = () => { ov.remove(); if(onClose) onClose(); };
+}
+
+function showConfirm(message, onYes, onNo) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99000;display:flex;align-items:center;justify-content:center;';
+  const msg = String(message).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  ov.innerHTML = `<div style="background:#36393f;border:1px solid #4f545c;border-radius:10px;padding:24px;max-width:400px;width:92%;box-shadow:0 5px 25px rgba(0,0,0,0.7);">
+    <p style="color:#fff;margin:0 0 18px 0;font-size:14px;line-height:1.55;white-space:pre-wrap;">${msg}</p>
+    <div style="display:flex;gap:10px;">
+      <button id="dlg-yes" style="flex:1;padding:10px;background:#ed4245;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:14px;">Yes</button>
+      <button id="dlg-no"  style="flex:1;padding:10px;background:#4f545c;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:14px;">No</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#dlg-yes').onclick = () => { ov.remove(); if(onYes) onYes(); };
+  ov.querySelector('#dlg-no' ).onclick = () => { ov.remove(); if(onNo)  onNo();  };
+}
+
+function showPrompt(message, defaultVal, onSubmit) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99000;display:flex;align-items:center;justify-content:center;';
+  const msg = String(message).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const safe = String(defaultVal||'').replace(/"/g,'&quot;');
+  ov.innerHTML = `<div style="background:#36393f;border:1px solid #4f545c;border-radius:10px;padding:24px;max-width:400px;width:92%;box-shadow:0 5px 25px rgba(0,0,0,0.7);">
+    <p style="color:#fff;margin:0 0 12px 0;font-size:14px;line-height:1.55;white-space:pre-wrap;">${msg}</p>
+    <input id="dlg-in" type="text" value="${safe}" style="width:100%;box-sizing:border-box;padding:10px;background:#1e1e1e;color:#fff;border:1px solid #4f545c;border-radius:6px;font-size:14px;margin-bottom:14px;outline:none;">
+    <div style="display:flex;gap:10px;">
+      <button id="dlg-ok" style="flex:1;padding:10px;background:#ffcc00;color:#000;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:14px;">OK</button>
+      <button id="dlg-cx" style="flex:1;padding:10px;background:#4f545c;color:#fff;border:none;border-radius:6px;font-weight:bold;cursor:pointer;font-size:14px;">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  const inp = ov.querySelector('#dlg-in');
+  setTimeout(() => { inp.focus(); inp.select(); }, 40);
+  const submit = () => { const v = inp.value; ov.remove(); if(onSubmit) onSubmit(v); };
+  const cancel = () => { ov.remove(); if(onSubmit) onSubmit(null); };
+  ov.querySelector('#dlg-ok').onclick = submit;
+  ov.querySelector('#dlg-cx').onclick = cancel;
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') submit(); if(e.key==='Escape') cancel(); });
+}
+
+// Asks the user to confirm N times before calling onFinalYes
+function showMultiConfirm(message, timesLeft, onFinalYes) {
+  if (timesLeft <= 0) { onFinalYes(); return; }
+  const step = 6 - timesLeft;
+  showConfirm(`(${step}/5) ${message}`, () => showMultiConfirm(message, timesLeft-1, onFinalYes), null);
+}
+
+// ============================================================
+// AUDIT LOG — writes events to Firebase for admin review
+// ============================================================
+function writeAuditLog(type, details) {
+  auditLogRef.push({ type, details, ts: Date.now() });
+}
+
+// ============================================================
+// SITE SETTINGS — chat cooldown (stored in Firebase)
+// ============================================================
+let chatCooldownMs = 0;
+let sendCooldown   = false;
+let _cooldownTimer = null;
+
+function applySendCooldown() {
+  if (isAdmin || chatCooldownMs <= 0) return;
+  sendCooldown = true;
+  sendChat.disabled = true;
+  clearTimeout(_cooldownTimer);
+  _cooldownTimer = setTimeout(() => {
+    sendCooldown = false;
+    sendChat.disabled = false;
+  }, chatCooldownMs);
+}
 
 // ---------------------- 2. AUTH & ACCOUNT LOGIC ----------------------
 let username = "";
@@ -27,9 +121,8 @@ let isAdmin = false;
 
 // ADMIN CREDENTIALS & BADGES
 const admins = {
-  "bian": { password: "joe mamaaa", badge: "purplestar.png" },
-  "jair0": { password: "JAIROJAIROJUANN", badge: "jairobadge.png" },
-  "Chr1stian": { password: "doesntwork", badge: "christianbadge.png" }
+  "bian": { password: "hehehahahehehaha", badge: "purplestar.png" },
+  "jair0": { password: "67JAIRO67", badge: "jairobadge.png" }
 };
 
 const authOverlay = document.getElementById('auth-overlay');
@@ -59,6 +152,7 @@ document.getElementById('btn-reg-submit').onclick = () => {
             err.textContent = "Username already taken!";
         } else {
             db.ref('users/' + cName).set({ password: p, originalName: u }).then(() => {
+                writeAuditLog('register', `New account created: ${u}`);
                 completeLogin(u);
             });
         }
@@ -133,10 +227,57 @@ function completeLogin(uname, forceAdmin = false) {
     });
     
     setupPresence();
+    writeAuditLog('login', `${username} logged in`);
+    if (isAdmin || admins[cleanName]) {
+      setTimeout(setupAdminSettingsTab, 500);
+      // Admin session protection
+      adminSessionRef.child(cleanName).once('value', sesSnap => {
+        const existing = sesSnap.val();
+        if (existing && existing.deviceID !== deviceID && Date.now() - existing.ts < 300000) {
+          adminLoginReqRef.child(cleanName).set({ requestingDevice: deviceID, ts: Date.now() });
+          showAlert('⏳ Another device is logged in as this admin. Requesting approval...');
+          writeAuditLog('admin_login_request', `${username} requested secondary login`);
+          const respRef = adminLoginReqRef.child(cleanName + '_resp');
+          respRef.on('value', respSnap => {
+            const resp = respSnap.val();
+            if (!resp) return;
+            respRef.off(); respRef.remove();
+            if (resp.approved) {
+              adminSessionRef.child(cleanName).set({ deviceID, ts: Date.now() });
+              adminSessionRef.child(cleanName).onDisconnect().remove();
+            } else {
+              showAlert('❌ Login rejected by the active admin session.');
+              localStorage.removeItem('chat_logged_in_user');
+              setTimeout(() => location.reload(), 2500);
+            }
+          });
+        } else {
+          adminSessionRef.child(cleanName).set({ deviceID, ts: Date.now() });
+          adminSessionRef.child(cleanName).onDisconnect().remove();
+          adminLoginReqRef.child(cleanName).on('value', reqSnap => {
+            const req = reqSnap.val();
+            if (!req || req.requestingDevice === deviceID) return;
+            showConfirm(
+              `⚠️ Someone is trying to log into your admin account (${username}) from another device. Accept?`,
+              () => {
+                adminSessionRef.child(cleanName).set({ deviceID: req.requestingDevice, ts: Date.now() });
+                adminLoginReqRef.child(cleanName + '_resp').set({ approved: true });
+                adminLoginReqRef.child(cleanName).remove();
+                writeAuditLog('admin_login_approved', `${username} approved secondary login`);
+              },
+              () => {
+                adminLoginReqRef.child(cleanName + '_resp').set({ approved: false });
+                adminLoginReqRef.child(cleanName).remove();
+                writeAuditLog('admin_login_rejected', `${username} rejected secondary login`);
+              }
+            );
+          });
+        }
+      });
+    }
 
-    // AUTO-PRESENCE VERIFICATION: confirm our presence entry actually landed
-    // with a username. If not, auto-reload (up to 3 times) so the user always
-    // appears properly in the target selector for sounds/jumpscares/force-refresh.
+    // AUTO-PRESENCE VERIFICATION: confirm presence entry has a username.
+    // If not, auto-reload (up to 3 times) so the user always appears in target selectors.
     const presenceRetries = parseInt(sessionStorage.getItem('presence_retries') || '0');
     setTimeout(() => {
       presenceRef.child(cleanName).once('value', snap => {
@@ -299,7 +440,7 @@ if (settingsBtn) {
     if (url && !iconError.textContent && cleanName) {
       db.ref('users/' + cleanName).update({ icon: url });
       myIcon = url;
-      alert("✅ Custom icon saved!");
+      showAlert("✅ Custom icon saved!");
     }
   };
 }
@@ -330,14 +471,14 @@ if (suggestionBtn) {
             const diff = Date.now() - parseInt(lastSent);
             if (diff < 30 * 60 * 1000) {
                 const minsLeft = Math.ceil((30 * 60 * 1000 - diff) / 60000);
-                alert(`Please wait ${minsLeft} minutes before sending another suggestion.`);
+                showAlert(`Please wait ${minsLeft} minutes before sending another suggestion.`);
                 return;
             }
         }
 
         db.ref('suggestions').push({ username: username, text: text, timestamp: Date.now() });
         localStorage.setItem('sugg_last_sent', Date.now());
-        alert("Suggestion sent! Thanks for the idea.");
+        showAlert("Suggestion sent! Thanks for the idea.");
         suggestionInput.value = "";
         suggestionModal.style.display = 'none';
     };
@@ -378,9 +519,9 @@ db.ref('suggestions').on('child_removed', (snapshot) => {
 });
 
 window.deleteSuggestion = function(key) {
-    if(confirm("Delete this suggestion?")) {
+    showConfirm("Delete this suggestion?", () => {
         db.ref('suggestions').child(key).remove();
-    }
+    });
 };
 
 // ---------------------- 7. MULTIPLAYER CURSORS ----------------------
@@ -481,46 +622,35 @@ if (closeSfx) closeSfx.onclick = () => soundBoard.style.display = 'none';
 
 if (clearChatBtn) {
   clearChatBtn.addEventListener("click", () => {
-    if (confirm("Delete all messages?")) {
+    showConfirm("Delete all messages?", () => {
       db.ref("messages").remove();
       chatMessages.innerHTML = "";
-    }
+    });
   });
 }
 
-// Soundboard Tabs
+// Soundboard Tabs — clears all tabs then activates the selected one
+function clearAllTabs() {
+  ['tab-sounds','tab-jumps','tab-tools','tab-logs'].forEach(id => { const el=document.getElementById(id); if(el) el.classList.remove('active'); });
+  ['sounds-content','jumps-content','tools-content','logs-content'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+}
 if (tabSounds) {
-  tabSounds.onclick = () => {
-    tabSounds.classList.add('active');
-    tabJumps.classList.remove('active');
-    if (document.getElementById('tab-tools')) document.getElementById('tab-tools').classList.remove('active');
-    soundsContent.style.display = 'flex';
-    jumpsContent.style.display = 'none';
-    if (document.getElementById('tools-content')) document.getElementById('tools-content').style.display = 'none';
-  };
+  tabSounds.onclick = () => { clearAllTabs(); tabSounds.classList.add('active'); soundsContent.style.display='flex'; };
 }
 if (tabJumps) {
-  tabJumps.onclick = () => {
-    tabJumps.classList.add('active');
-    tabSounds.classList.remove('active');
-    if (document.getElementById('tab-tools')) document.getElementById('tab-tools').classList.remove('active');
-    soundsContent.style.display = 'none';
-    jumpsContent.style.display = 'flex';
-    if (document.getElementById('tools-content')) document.getElementById('tools-content').style.display = 'none';
-  };
+  tabJumps.onclick = () => { clearAllTabs(); tabJumps.classList.add('active'); jumpsContent.style.display='flex'; };
 }
 
 const tabTools = document.getElementById('tab-tools');
 const toolsContent = document.getElementById('tools-content');
 if (tabTools) {
-  tabTools.onclick = () => {
-    tabTools.classList.add('active');
-    tabSounds.classList.remove('active');
-    tabJumps.classList.remove('active');
-    soundsContent.style.display = 'none';
-    jumpsContent.style.display = 'none';
-    toolsContent.style.display = 'flex';
-  };
+  tabTools.onclick = () => { clearAllTabs(); tabTools.classList.add('active'); toolsContent.style.display='flex'; };
+}
+
+const tabLogs = document.getElementById('tab-logs');
+const logsContent = document.getElementById('logs-content');
+if (tabLogs) {
+  tabLogs.onclick = () => { clearAllTabs(); tabLogs.classList.add('active'); logsContent.style.display='flex'; };
 }
 
 // ---------------------- 9. FIREBASE VARS ----------------------
@@ -583,8 +713,8 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Inject a sticky ✕ close button inside the panel — always reachable
-// even when the school clock is blocking the Member List toggle button
+// Inject sticky ✕ close button inside the panel — always reachable
+// even when the school clock is blocking the toggle button
 const memberPanelCloseBtn = document.createElement('button');
 memberPanelCloseBtn.textContent = '✕';
 memberPanelCloseBtn.style.cssText = 'position:sticky;top:4px;float:right;margin:4px 8px 0 0;background:none;border:none;color:#ed4245;font-size:18px;font-weight:bold;cursor:pointer;line-height:1;z-index:55;';
@@ -658,26 +788,28 @@ membersList.addEventListener('click', e => {
   if (e.target.classList.contains('delete-user-btn')) {
     const cname = e.target.dataset.cname;
     const name = allUsers[cname] ? allUsers[cname].originalName : cname;
-    if (confirm(`⚠️ ARE YOU SURE? This permanently DELETES "${name}"!`)) {
+    showConfirm(`⚠️ ARE YOU SURE? This permanently DELETES "${name}"!`, () => {
       db.ref('users/' + cname).remove();
       db.ref('presence/' + cname).remove();
-    }
+      writeAuditLog('delete_account', `${username} deleted account: ${name}`);
+    });
   }
   const emoji = e.target.closest('.timeout-emoji');
   if (emoji && isAdmin) {
     const item = emoji.closest('.member-item');
     const cKey = item.dataset.cname;
     const dispName = (allUsers[cKey] && allUsers[cKey].originalName) || (allPresence[cKey] && allPresence[cKey].username) || cKey;
-    const dur = prompt(`New timeout seconds for ${dispName} (0 = remove):`, '60');
-    if (dur !== null) {
-      const ns = parseInt(dur);
-      Object.keys(timeouts || {}).forEach(did => {
-        if (timeouts[did] && timeouts[did].originalName && timeouts[did].originalName.toLowerCase() === cKey) {
-          if (ns <= 0) db.ref('timeouts/' + did).remove();
-          else db.ref('timeouts/' + did).update({until: Date.now() + ns*1000});
-        }
-      });
-    }
+    showPrompt(`New timeout seconds for ${dispName} (0 = remove):`, '60', (dur) => {
+      if (dur !== null) {
+        const ns = parseInt(dur);
+        Object.keys(timeouts || {}).forEach(did => {
+          if (timeouts[did] && timeouts[did].originalName && timeouts[did].originalName.toLowerCase() === cKey) {
+            if (ns <= 0) db.ref('timeouts/' + did).remove();
+            else db.ref('timeouts/' + did).update({until: Date.now() + ns*1000});
+          }
+        });
+      }
+    });
   }
 });
 
@@ -694,12 +826,12 @@ function populateVault(container, items) {
     img.onclick = () => {
       if (!username) return;
       if (timeouts === null) {
-        alert("Connecting to server... wait a sec.");
+        showAlert("Connecting to server... wait a sec.");
         return;
       }
       const myTimeout = timeouts[deviceID];
       if (myTimeout && myTimeout.until > Date.now() && myTimeout.type !== 'shadow') {
-        alert("you're timed out buddy.");
+        showAlert("you're timed out buddy.");
         return;
       }
 
@@ -714,6 +846,7 @@ function populateVault(container, items) {
       gifVault.style.display = 'none';
       emojiVault.style.display = 'none';
       typingRef.child(identityKey).remove();
+      applySendCooldown();
     };
     container.appendChild(img);
   });
@@ -774,7 +907,7 @@ sendChat.addEventListener("click", () => {
   if (!text) return;
 
   if (text.length > MAX_CHARS) {
-    alert("Message too long! Remove characters.");
+    showAlert("Message too long! Remove characters.");
     return;
   }
   if (timeouts === null) {
@@ -783,14 +916,14 @@ sendChat.addEventListener("click", () => {
   }
   const myTimeout = timeouts[deviceID]; 
   if (myTimeout && myTimeout.until > Date.now() && myTimeout.type !== 'shadow') {
-    alert("you're timed out.");
+    showAlert("you're timed out.");
     return;
   }
   if (isRateLimited) return;
 
   if (checkRateLimit()) {
       isRateLimited = true;
-      alert("You are being rate limited (too fast!). Cooling down for 3 seconds.");
+      showAlert("You are being rate limited (too fast!). Cooling down for 3 seconds.");
       sendChat.disabled = true;
       chatInput.disabled = true;
       setTimeout(() => {
@@ -814,6 +947,7 @@ sendChat.addEventListener("click", () => {
   chatInput.value = "";
   charCounter.textContent = MAX_CHARS; 
   typingRef.child(identityKey).remove();
+  applySendCooldown();
 });
 chatInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendChat.click(); });
 
@@ -882,12 +1016,10 @@ function createMessageElement(msg, msgKey) {
 
   const p = document.createElement("p");
 
-  // Shadow timeout visual: admins see the message dimmed so they know it's a ghost post.
-  // The sender themselves sees it fully normally (no hint anything is wrong).
+  // Shadow timeout: admins see message dimmed; regular users see nothing; sender sees normally
   const isShadowed = msg.fingerprint && timeouts && timeouts[msg.fingerprint] &&
       timeouts[msg.fingerprint].until > Date.now() &&
       timeouts[msg.fingerprint].type === 'shadow';
-  const isMine = msg.fingerprint === deviceID;
   if (isShadowed && isAdmin) {
     p.style.opacity = '0.45';
     p.style.filter = 'grayscale(60%)';
@@ -948,15 +1080,17 @@ function createMessageElement(msg, msgKey) {
     timeoutBtn.textContent = "⏱️";
     timeoutBtn.className = "admin-action-btn";
     timeoutBtn.onclick = () => {
-        const duration = prompt(`Normal timeout ${msg.username} for how many seconds?`);
-        if (duration && !isNaN(duration)) {
-            const untilTime = Date.now() + (parseInt(duration) * 1000);
-            db.ref("timeouts").child(msg.fingerprint).set({ 
-                until: untilTime,
-                type: "normal",
-                originalName: msg.username 
-            });
-        }
+        showPrompt(`Normal timeout ${msg.username} for how many seconds?`, '', (duration) => {
+            if (duration && !isNaN(duration)) {
+                const untilTime = Date.now() + (parseInt(duration) * 1000);
+                db.ref("timeouts").child(msg.fingerprint).set({ 
+                    until: untilTime,
+                    type: "normal",
+                    originalName: msg.username 
+                });
+                writeAuditLog('timeout', `${username} timed out ${msg.username} for ${duration}s`);
+            }
+        });
     };
     p.appendChild(timeoutBtn);
 
@@ -964,15 +1098,17 @@ function createMessageElement(msg, msgKey) {
     shadowBtn.textContent = "🕶️";
     shadowBtn.className = "admin-action-btn";
     shadowBtn.onclick = () => {
-        const duration = prompt(`Shadow timeout ${msg.username} for how many seconds?`);
-        if (duration && !isNaN(duration)) {
-            const untilTime = Date.now() + (parseInt(duration) * 1000);
-            db.ref("timeouts").child(msg.fingerprint).set({ 
-                until: untilTime,
-                type: "shadow",
-                originalName: msg.username 
-            });
-        }
+        showPrompt(`Shadow timeout ${msg.username} for how many seconds?`, '', (duration) => {
+            if (duration && !isNaN(duration)) {
+                const untilTime = Date.now() + (parseInt(duration) * 1000);
+                db.ref("timeouts").child(msg.fingerprint).set({ 
+                    until: untilTime,
+                    type: "shadow",
+                    originalName: msg.username 
+                });
+                writeAuditLog('shadow_timeout', `${username} shadow-timed out ${msg.username} for ${duration}s`);
+            }
+        });
     };
     p.appendChild(shadowBtn);
   }
@@ -1029,9 +1165,9 @@ function updateTimeoutDisplay() {
     const seconds = Math.ceil(Math.max(0, myStatus.until - Date.now()) / 1000);
     const isShadow = myStatus.type === 'shadow';
     timerEl.textContent = seconds > 0 
-      ? (isShadow ? `` : `Your device is timed out for ${seconds}s more.`)
+      ? (isShadow ? `Shadow timeout: ${seconds}s (you can still chat)` : `Your device is timed out for ${seconds}s more.`)
       : "";
-    timerEl.style.color = '#ffb4b4';
+    timerEl.style.color = isShadow ? '#c724c7' : '#ffb4b4';
     if (seconds <= 0) {
         clearInterval(timeoutInterval);
         timerEl.textContent = "";
@@ -1205,7 +1341,7 @@ function showTargetSelector(callback) {
   document.body.appendChild(modal);
 
   const list = modal.querySelector('#target-list');
-  const online = Object.keys(allPresence).filter(k => allPresence[k] && allPresence[k].username && Date.now() - allPresence[k].lastSeen < 180000);
+  const online = Object.keys(allPresence).filter(k => Date.now() - allPresence[k].lastSeen < 180000);
   online.forEach(k => {
     const p = allPresence[k];
     const b = document.createElement('button');
@@ -1241,7 +1377,7 @@ jumpsImage.addEventListener('input', () => {
 
 sendJumpsBtn.onclick = () => {
   const url = jumpsImage.value.trim();
-  if (!url || jumpsError.textContent) return alert('Fix image link first');
+  if (!url || jumpsError.textContent) { showAlert('Fix image link first'); return; }
   showTargetSelector(user => {
     if (user) db.ref('jumpscares').push({ target: user, image: url, time: Date.now() });
   });
@@ -1276,12 +1412,21 @@ targetedSfxRef.on('child_added', snap => {
   }
 });
 
-// ---------------------- FORCE REFRESH (ADMIN TOOL) ----------------------
-// Clients listen for a force_refresh event targeting their username.
-// When received, they silently reload. Admins trigger this from the Tools tab.
+
+// ============================================================
+// SITE SETTINGS LISTENER — reads cooldown from Firebase
+// ============================================================
+siteSettingsRef.on('value', snap => {
+  const data = snap.val() || {};
+  chatCooldownMs = (data.chat_cooldown || 0) * 1000;
+});
+
+// ============================================================
+// FORCE REFRESH — admin can reload a user's tab via Firebase
+// ============================================================
 forceRefreshRef.on('child_added', snap => {
   const d = snap.val();
-  if (d && d.target === username && d.time > loadTime) {
+  if (d && d.target === username && d.ts > loadTime) {
     snap.ref.remove();
     location.reload();
   }
@@ -1289,6 +1434,102 @@ forceRefreshRef.on('child_added', snap => {
 
 window.forceRefreshUser = function() {
   showTargetSelector(user => {
-    if (user) forceRefreshRef.push({ target: user, time: Date.now() });
+    if (user) {
+      forceRefreshRef.push({ target: user, ts: Date.now() });
+      writeAuditLog('force_refresh', `${username} force-refreshed ${user}`);
+    }
   });
 };
+
+// ============================================================
+// FORCE LOGOUT — admin can log out a user or everyone
+// ============================================================
+forceLogoutRef.on('child_added', snap => {
+  const d = snap.val();
+  if (!d || d.ts <= loadTime) return;
+  if ((d.target === 'ALL' && !isAdmin) || d.target === username) {
+    localStorage.removeItem('chat_logged_in_user');
+    location.reload();
+  }
+});
+
+window.logoutSpecificUser = function() {
+  showTargetSelector(user => {
+    if (user) {
+      forceLogoutRef.push({ target: user, ts: Date.now() });
+      writeAuditLog('force_logout', `${username} force-logged out ${user}`);
+    }
+  });
+};
+
+window.logoutAll = function() {
+  showMultiConfirm('⚠️ Log out ALL users from the website?', 5, () => {
+    forceLogoutRef.push({ target: 'ALL', ts: Date.now() });
+    writeAuditLog('force_logout_all', `${username} logged out everyone`);
+  });
+};
+
+// ============================================================
+// AUDIT LOG TAB — load entries for admins
+// ============================================================
+if (isAdmin) {
+  auditLogRef.limitToLast(80).on('child_added', snap => {
+    const d = snap.val();
+    const container = document.getElementById('audit-log-entries');
+    if (!container) return;
+    const entry = document.createElement('div');
+    entry.style.cssText = 'background:rgba(255,255,255,0.05);padding:5px 8px;border-radius:4px;font-size:11px;color:#b9bbbe;line-height:1.4;';
+    const time = new Date(d.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const typeColors = { register:'#57f287', login:'#5865f2', timeout:'#ed4245', shadow_timeout:'#c724c7',
+      delete_account:'#ff4444', force_logout:'#ff7043', force_logout_all:'#ff1744',
+      force_refresh:'#ffcc00', admin_login_request:'#ff9800', admin_login_approved:'#57f287',
+      admin_login_rejected:'#ed4245', settings_change:'#00b0f4' };
+    const color = typeColors[d.type] || '#aaa';
+    entry.innerHTML = `<span style="color:${color};font-weight:bold;">[${d.type}]</span> <span style="color:#777;">${time}</span> ${String(d.details).replace(/</g,'&lt;')}`;
+    container.prepend(entry);
+  });
+}
+
+// ============================================================
+// ADMIN SETTINGS TAB — injected into Settings modal for admins
+// ============================================================
+function setupAdminSettingsTab() {
+  const modalBody = document.querySelector('#settings-modal .modal-body');
+  if (!modalBody || document.getElementById('admin-site-settings')) return;
+
+  const section = document.createElement('div');
+  section.id = 'admin-site-settings';
+  section.innerHTML = `
+    <hr style="border-top:1px solid #4f545c;border-bottom:none;margin:20px 0;">
+    <div style="color:#ffcc00;font-size:13px;font-weight:bold;margin-bottom:12px;">⚙️ Site Settings <span style="font-size:10px;color:#777;font-weight:normal;">(admin only)</span></div>
+    <label style="color:#b9bbbe;font-size:12px;font-weight:bold;display:block;margin-bottom:6px;">Chat Cooldown: <span id="cooldown-val-label">0s</span></label>
+    <input type="range" id="cooldown-slider" min="0" max="100" value="0"
+           style="width:100%;accent-color:#ffcc00;margin-bottom:4px;cursor:pointer;">
+    <p style="color:#72767d;font-size:11px;margin:0 0 10px 0;">0 = disabled. Does not affect admins. Applies to text, GIFs, and emojis.</p>
+    <div id="current-cooldown-display" style="color:#aaa;font-size:12px;margin-bottom:10px;"></div>
+    <button id="save-cooldown-btn" style="width:100%;padding:10px;background:#5865F2;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">Save Cooldown</button>
+  `;
+  modalBody.appendChild(section);
+
+  const slider = document.getElementById('cooldown-slider');
+  const valLabel = document.getElementById('cooldown-val-label');
+  const currentDisplay = document.getElementById('current-cooldown-display');
+
+  // Load current value
+  siteSettingsRef.once('value', snap => {
+    const val = (snap.val() || {}).chat_cooldown || 0;
+    slider.value = val;
+    valLabel.textContent = val + 's';
+    currentDisplay.textContent = val > 0 ? `Current: ${val}s cooldown between messages` : 'Current: No cooldown';
+  });
+
+  slider.oninput = () => { valLabel.textContent = slider.value + 's'; };
+
+  document.getElementById('save-cooldown-btn').onclick = () => {
+    const val = parseInt(slider.value);
+    siteSettingsRef.update({ chat_cooldown: val });
+    writeAuditLog('settings_change', `${username} set chat cooldown to ${val}s`);
+    currentDisplay.textContent = val > 0 ? `Current: ${val}s cooldown between messages` : 'Current: No cooldown';
+    showAlert(`✅ Chat cooldown set to ${val} second${val !== 1 ? 's' : ''}.${val === 0 ? ' (disabled)' : ''}`);
+  };
+}

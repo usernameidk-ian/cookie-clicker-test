@@ -7,7 +7,7 @@ body {
   background: url('chatbackground.png') no-repeat center center fixed;
   background-size: cover;
   position: relative;
-  overflow-x: hidden; /* Prevent scrollbar from cursor movement */
+  overflow-x: hidden;
 }
 
 body::before {
@@ -22,15 +22,15 @@ body::before {
 #cursor-layer {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    pointer-events: none; /* Let clicks pass through */
+    pointer-events: none;
     z-index: 9999;
     overflow: hidden;
 }
 
 .live-cursor {
     position: absolute;
-    transition: top 0.1s linear, left 0.1s linear; /* Smooth movement */
-    pointer-events: auto; /* Allow hovering over the cursor itself */
+    transition: top 0.1s linear, left 0.1s linear;
+    pointer-events: auto;
 }
 
 .cursor-svg {
@@ -49,13 +49,13 @@ body::before {
     border-radius: 4px;
     font-size: 10px;
     white-space: nowrap;
-    opacity: 0; /* Hidden by default */
+    opacity: 0;
     transition: opacity 0.2s;
     pointer-events: none;
 }
 
 .live-cursor:hover .cursor-nametag {
-    opacity: 1; /* Show on hover */
+    opacity: 1;
 }
 
 /* ---------------------- HEADER ---------------------- */
@@ -108,6 +108,26 @@ body::before {
 #color-picker { border: none; width: 40px; height: 40px; cursor: pointer; background: none; }
 #color-preview { font-weight: bold; font-size: 16px; }
 .note { font-size: 11px; color: #72767d; margin-top: 10px; font-style: italic; }
+
+/* ---------------------- SCROLLABLE SETTINGS MODAL ---------------------- */
+#settings-modal .modal-content {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#settings-modal .modal-header {
+  flex-shrink: 0;
+}
+.modal-body {
+  max-height: 65vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+.modal-body::-webkit-scrollbar { width: 6px; }
+.modal-body::-webkit-scrollbar-thumb { background: #ffcc00; border-radius: 3px; }
+.modal-body::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
 
 /* Admin Suggestion Box Items */
 .suggestion-card {

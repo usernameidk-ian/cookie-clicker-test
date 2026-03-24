@@ -137,6 +137,7 @@
         <div id="char-counter">2000</div>
         <button id="send-chat">Send</button>
       </div>
+      <p id="cooldown-display" style="margin:3px 0 0 0;font-size:11px;color:#ffcc00;min-height:14px;text-align:right;padding-right:2px;"></p>
       <p id="timeout-timer" class="timeout-timer"></p>
     </main>
   </div>
@@ -164,6 +165,14 @@
         <div id="icon-preview" style="text-align:center;min-height:80px;margin:8px 0;"></div>
         <p id="icon-error" class="auth-error" style="margin:0 0 8px 0;"></p>
         <button id="save-icon-btn" style="width:100%;padding:10px;background:#5865F2;color:white;border:none;border-radius:6px;cursor:pointer;">Save Icon</button>
+
+        <hr style="border-top:1px solid #4f545c;border-bottom:none;margin:18px 0;">
+        <label>Background Image (direct image link):</label>
+        <input type="text" id="bg-input" placeholder="https://... .png / .jpg / .gif" style="width:100%;padding:10px;background:#1e1e1e;color:#fff;border:none;border-radius:6px;margin-bottom:8px;">
+        <div id="bg-preview" style="text-align:center;min-height:60px;margin:8px 0;"></div>
+        <p id="bg-error" class="auth-error" style="margin:0 0 8px 0;"></p>
+        <p style="font-size:11px;color:#72767d;margin:0 0 8px 0;">Leave empty and save to reset to the default wallpaper.</p>
+        <button id="save-bg-btn" style="width:100%;padding:10px;background:#5865F2;color:white;border:none;border-radius:6px;cursor:pointer;">Save Background</button>
         <p class="note">Customize your experience.</p>
         <hr style="border-top: 1px solid #4f545c; border-bottom: none; margin: 20px 0;">
         <button id="logout-btn" style="width:100%; padding:10px; background:#ed4245; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 14px;">Log Out</button>

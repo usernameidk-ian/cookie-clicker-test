@@ -89,14 +89,28 @@ function writeAuditLog(type, details) {
 let chatCooldownMs = 0;
 let sendCooldown   = false;
 let _cooldownTimer = null;
+let _cooldownCountInterval = null;
 function applySendCooldown() {
   if (isAdmin || chatCooldownMs <= 0) return;
   sendCooldown = true;
   sendChat.disabled = true;
   clearTimeout(_cooldownTimer);
+  clearInterval(_cooldownCountInterval);
+
+  // Show countdown under the char counter
+  const cdEl = document.getElementById('cooldown-display');
+  let remaining = Math.ceil(chatCooldownMs / 1000);
+  if (cdEl) cdEl.textContent = remaining + 's';
+  _cooldownCountInterval = setInterval(() => {
+    remaining--;
+    if (cdEl) cdEl.textContent = remaining > 0 ? remaining + 's' : '';
+    if (remaining <= 0) clearInterval(_cooldownCountInterval);
+  }, 1000);
+
   _cooldownTimer = setTimeout(() => {
     sendCooldown = false;
     sendChat.disabled = false;
+    if (cdEl) cdEl.textContent = '';
   }, chatCooldownMs);
 }
 
@@ -211,6 +225,10 @@ function completeLogin(uname, forceAdmin = false) {
             iconInput.value = myIcon;
             validateIconPreview();
         }
+        if (data.background) {
+            myBackground = data.background;
+            applyBackground(myBackground);
+        }
     });
     
     setupPresence();
@@ -219,7 +237,7 @@ function completeLogin(uname, forceAdmin = false) {
       setTimeout(setupAdminSettingsTab, 500);
       adminSessionRef.child(cleanName).once('value', sesSnap => {
         const existing = sesSnap.val();
-        if (existing && existing.deviceID !== deviceID && Date.now() - existing.ts < 300000) {
+        if (existing && existing.deviceID !== deviceID) {
           adminLoginReqRef.child(cleanName).set({ requestingDevice: deviceID, ts: Date.now() });
           writeAuditLog('admin_login_request', `${username} requested secondary login`);
           // Show blocking "go back" — no OK button that lets them slip through
@@ -233,6 +251,9 @@ function completeLogin(uname, forceAdmin = false) {
           document.body.appendChild(ov);
           document.getElementById('admin-goback-btn').onclick = () => {
             ov.remove();
+            if (_respListener) respRef.off('value', _respListener);
+            adminLoginReqRef.child(cleanName).remove();
+            adminLoginReqRef.child(cleanName + '_resp').remove();
             localStorage.removeItem('chat_logged_in_user');
             username = ''; cleanName = ''; identityKey = ''; isAdmin = false;
             authOverlay.style.display = 'flex';
@@ -241,7 +262,8 @@ function completeLogin(uname, forceAdmin = false) {
             viewReg.style.display = 'none';
           };
           const respRef = adminLoginReqRef.child(cleanName + '_resp');
-          respRef.on('value', respSnap => {
+          let _respListener = null;
+          _respListener = respRef.on('value', respSnap => {
             const resp = respSnap.val();
             if (!resp) return;
             respRef.off(); respRef.remove();
@@ -249,7 +271,6 @@ function completeLogin(uname, forceAdmin = false) {
             if (resp.approved) {
               if (waitOv) waitOv.remove();
               adminSessionRef.child(cleanName).set({ deviceID, ts: Date.now() });
-              adminSessionRef.child(cleanName).onDisconnect().remove();
             } else {
               if (waitOv) waitOv.remove();
               const ov2 = document.createElement('div');
@@ -272,7 +293,6 @@ function completeLogin(uname, forceAdmin = false) {
           });
         } else {
           adminSessionRef.child(cleanName).set({ deviceID, ts: Date.now() });
-          adminSessionRef.child(cleanName).onDisconnect().remove();
           adminLoginReqRef.child(cleanName).on('value', reqSnap => {
             const req = reqSnap.val();
             if (!req || req.requestingDevice === deviceID) return;
@@ -322,6 +342,15 @@ if(savedUser) {
 // ---------------------- 3. USER SETTINGS & VISUALS ----------------------
 let myColor = localStorage.getItem("chat_username_color") || "#ffffff";
 let myIcon = null;
+let myBackground = null; // null = use default chatbackground.png
+
+function applyBackground(url) {
+  if (url && url.trim()) {
+    document.body.style.backgroundImage = `url('${url.trim()}')`;
+  } else {
+    document.body.style.backgroundImage = "url('chatbackground.png')";
+  }
+}
 let showCursors = localStorage.getItem("chat_show_cursors") !== "false"; 
 
 function addAdminIcon(p, messageUsername) {
@@ -454,16 +483,72 @@ if (settingsBtn) {
 
   saveIconBtn.onclick = () => {
     const url = iconInput.value.trim();
-    if (url && !iconError.textContent && cleanName) {
+    if (!url) {
+      db.ref('users/' + cleanName).update({ icon: null });
+      myIcon = null;
+      iconPreview.innerHTML = '';
+      showAlert("✅ Icon removed. Your name will show instead.");
+    } else if (!iconError.textContent && cleanName) {
       db.ref('users/' + cleanName).update({ icon: url });
       myIcon = url;
       showAlert("✅ Custom icon saved!");
     }
   };
+
+  // ── BACKGROUND / WALLPAPER SETTINGS ──
+  const bgInput = document.getElementById('bg-input');
+  const bgPreview = document.getElementById('bg-preview');
+  const bgError = document.getElementById('bg-error');
+  const saveBgBtn = document.getElementById('save-bg-btn');
+
+  function validateBgPreview() {
+    const url = bgInput.value.trim();
+    bgError.textContent = '';
+    bgPreview.innerHTML = '';
+    if (!url) return;
+    if (url.length > 800) { bgError.textContent = "Link too long"; return; }
+    if (!/\.(png|jpe?g|gif|webp)$/i.test(url)) {
+      bgError.textContent = "Must end with .png/.jpg/.gif/.webp";
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      bgPreview.innerHTML = `<img src="${url}" style="width:100%;max-height:120px;object-fit:cover;border-radius:6px;border:3px solid #ffcc00;">`;
+    };
+    img.onerror = () => { bgError.textContent = "Link can't be accepted or doesn't work"; };
+    img.src = url;
+  }
+  if (bgInput) {
+    bgInput.addEventListener('input', () => {
+      clearTimeout(window.bgT);
+      window.bgT = setTimeout(validateBgPreview, 600);
+    });
+    // Load saved background into the input
+    if (myBackground) bgInput.value = myBackground;
+  }
+
+  if (saveBgBtn) {
+    saveBgBtn.onclick = () => {
+      const url = bgInput.value.trim();
+      if (!url) {
+        db.ref('users/' + cleanName).update({ background: null });
+        myBackground = null;
+        applyBackground(null);
+        bgPreview.innerHTML = '';
+        showAlert("✅ Background reset to default.");
+      } else if (!bgError.textContent && cleanName) {
+        db.ref('users/' + cleanName).update({ background: url });
+        myBackground = url;
+        applyBackground(url);
+        showAlert("✅ Background saved!");
+      }
+    };
+  }
 }
 
 if (logoutBtn) {
     logoutBtn.onclick = () => {
+        if (isAdmin && cleanName) adminSessionRef.child(cleanName).remove();
         localStorage.removeItem('chat_logged_in_user');
         location.reload(); 
     };
@@ -1446,7 +1531,7 @@ window.forceRefreshUser = function() {
 forceLogoutRef.on('child_added', snap => {
   const d = snap.val();
   if (!d || d.ts <= loadTime) return;
-  if ((d.target === 'ALL' && !isAdmin) || d.target === username) {
+  if (d.target === 'ALL' || d.target === username) {
     localStorage.removeItem('chat_logged_in_user');
     location.reload();
   }

@@ -89,6 +89,7 @@ function writeAuditLog(type, details) {
 let chatCooldownMs = 0;
 let sendCooldown   = false;
 let _cooldownTimer = null;
+let currentSchool  = localStorage.getItem('selected_school') || 'roybal';
 let _cooldownCountInterval = null;
 function applySendCooldown() {
   if (isAdmin || chatCooldownMs <= 0) return;
@@ -545,6 +546,18 @@ if (settingsBtn) {
     };
   }
 }
+
+// ── SCHOOL SELECTOR WIRING ──
+document.querySelectorAll('.school-select-btn').forEach(btn => {
+  if (btn.dataset.school === currentSchool) btn.classList.add('active');
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.school-select-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSchool = btn.dataset.school;
+    localStorage.setItem('selected_school', currentSchool);
+    updateClock();
+  });
+});
 
 if (logoutBtn) {
     logoutBtn.onclick = () => {
@@ -1315,66 +1328,94 @@ function updateTypingText() {
 }
 
 // ---------------------- 15. SCHOOL CLOCK ----------------------
-const schedules = {
-  regular: [
-    { n: "ADVISORY", s: "08:00", e: "08:29" },
-    { n: "PERIOD 1", s: "08:33", e: "09:28" },
-    { n: "PERIOD 2", s: "09:32", e: "10:27" },
-    { n: "BREAK", s: "10:27", e: "10:37" },
-    { n: "PERIOD 3", s: "10:41", e: "11:36" },
-    { n: "PERIOD 4", s: "11:40", e: "12:35" },
-    { n: "LUNCH", s: "12:35", e: "13:05" },
-    { n: "PERIOD 5", s: "13:09", e: "14:04" },
-    { n: "PERIOD 6", s: "14:08", e: "15:03" }
-  ],
-  tuesday: [
-    { n: "PERIOD 1", s: "08:00", e: "09:03" },
-    { n: "PERIOD 2", s: "09:07", e: "09:55" },
-    { n: "BREAK", s: "09:55", e: "10:05" },
-    { n: "PERIOD 3", s: "10:09", e: "10:57" },
-    { n: "PERIOD 4", s: "11:01", e: "11:49" },
-    { n: "LUNCH", s: "11:49", e: "12:19" },
-    { n: "PERIOD 5", s: "12:23", e: "13:11" },
-    { n: "PERIOD 6", s: "13:15", e: "14:03" }
-  ],
-  minimum: [
-    { n: "PERIOD 1", s: "08:00", e: "08:52" },
-    { n: "PERIOD 2", s: "08:56", e: "09:33" },
-    { n: "PERIOD 3", s: "09:37", e: "10:14" },
-    { n: "BRUNCH", s: "10:14", e: "10:44" },
-    { n: "PERIOD 4", s: "10:48", e: "11:25" },
-    { n: "PERIOD 5", s: "11:29", e: "12:06" },
-    { n: "PERIOD 6", s: "12:10", e: "12:47" }
-  ]
+const schoolSchedules = {
+  roybal: {
+    name: "Roybal Learning Center",
+    startLimit: "08:25",
+    regular: [
+      { n: "PERIOD 1",  s: "08:30", e: "09:24" },
+      { n: "PERIOD 2",  s: "09:30", e: "10:24" },
+      { n: "PERIOD 3",  s: "10:30", e: "11:24" },
+      { n: "HOMEROOM",  s: "11:30", e: "11:52" },
+      { n: "LUNCH",     s: "11:52", e: "12:27" },
+      { n: "PERIOD 4",  s: "12:33", e: "13:27" },
+      { n: "PERIOD 5",  s: "13:33", e: "14:27" },
+      { n: "PERIOD 6",  s: "14:33", e: "15:27" }
+    ],
+    tuesday: [
+      { n: "PERIOD 1",  s: "08:30", e: "09:19" },
+      { n: "PERIOD 2",  s: "09:25", e: "10:14" },
+      { n: "PERIOD 3",  s: "10:20", e: "11:09" },
+      { n: "LUNCH",     s: "11:09", e: "11:42" },
+      { n: "PERIOD 4",  s: "11:48", e: "12:37" },
+      { n: "PERIOD 5",  s: "12:43", e: "13:32" },
+      { n: "PERIOD 6",  s: "13:38", e: "14:27" }
+    ],
+    minimum: [
+      { n: "PERIOD 1",  s: "08:30", e: "09:09" },
+      { n: "PERIOD 2",  s: "09:15", e: "09:54" },
+      { n: "PERIOD 3",  s: "10:00", e: "10:39" },
+      { n: "PERIOD 4",  s: "10:45", e: "11:24" },
+      { n: "LUNCH",     s: "11:24", e: "11:56" },
+      { n: "PERIOD 5",  s: "12:02", e: "12:41" },
+      { n: "PERIOD 6",  s: "12:47", e: "13:26" }
+    ],
+    // Add minimum day dates here as "YYYY-MM-DD" strings when you know them
+    minDates: []
+  },
+  placeholder: {
+    name: "Other School",
+    startLimit: "07:55",
+    regular: [],
+    tuesday: [],
+    minimum: [],
+    minDates: []
+  },
+  none: {
+    name: "None",
+    startLimit: "07:55",
+    regular: [],
+    tuesday: [],
+    minimum: [],
+    minDates: []
+  }
 };
 
-const minDates = [
-    "2026-02-18", "2026-02-20", 
-    "2026-03-13", "2026-04-10", "2026-06-05", "2026-06-08", "2026-06-10"
-];
-
 function updateClock() {
+  const school = schoolSchedules[currentSchool];
+  const clockEl = document.getElementById('school-clock');
+
+  // No school selected or no schedule data — hide clock
+  if (!school || !school.regular || !school.regular.length) {
+    clockEl.style.display = 'none';
+    return;
+  }
+
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   const dateStr = `${year}-${month}-${d}`;
-  
+
   const time = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
   const day = now.getDay();
-  
-  let sched = schedules.regular;
-  
-  if (minDates.includes(dateStr)) {
-      sched = schedules.minimum;
-  } else if (day === 2) {
-      sched = schedules.tuesday;
+
+  let sched = school.regular;
+
+  if (school.minDates && school.minDates.includes(dateStr)) {
+    sched = school.minimum;
+  } else if (day === 2 && school.tuesday && school.tuesday.length) {
+    sched = school.tuesday;
   }
 
-  const startLimit = parseTime("07:55");
+  if (!sched || !sched.length) {
+    clockEl.style.display = 'none';
+    return;
+  }
+
+  const startLimit = parseTime(school.startLimit || "07:55");
   const endLimit = parseTime(sched[sched.length - 1].e);
 
-  const clockEl = document.getElementById('school-clock');
   if (day === 0 || day === 6 || time < startLimit || time > endLimit) {
     clockEl.style.display = 'none';
     return;
@@ -1384,8 +1425,8 @@ function updateClock() {
   let current = null, next = null;
 
   for (let i = 0; i < sched.length; i++) {
-    let s = parseTime(sched[i].s), e = parseTime(sched[i].e);
-    if (time >= s && time < e) {
+    let st = parseTime(sched[i].s), e = parseTime(sched[i].e);
+    if (time >= st && time < e) {
       current = sched[i];
       next = sched[i+1] || null;
       break;
@@ -1412,7 +1453,6 @@ function formatTimer(s) { return Math.floor(s/60) + ":" + (s%60).toString().padS
 
 setInterval(updateClock, 1000);
 updateClock();
-
 // ---------------------- TARGETED SOUNDS & JUMPSCARES ----------------------
 function showTargetSelector(callback) {
   const modal = document.createElement('div');

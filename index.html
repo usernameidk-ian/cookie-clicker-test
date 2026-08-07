@@ -48,7 +48,7 @@
   <div id="cursor-layer"></div>
 
   <header class="topbar">
-    <h1>yapping (chat) - Fixer Upper Update</h1>
+    <h1>yapping (chat) - Content Update</h1>
     <div class="controls">
       <button id="suggestion-btn" title="Submit a Suggestion">📬</button>
       <button id="settings-btn">⚙️ Settings</button>
@@ -175,6 +175,14 @@
         <button id="save-bg-btn" style="width:100%;padding:10px;background:#5865F2;color:white;border:none;border-radius:6px;cursor:pointer;">Save Background</button>
         <p class="note">Customize your experience.</p>
         <hr style="border-top: 1px solid #4f545c; border-bottom: none; margin: 20px 0;">
+        <hr style="border-top:1px solid #4f545c;border-bottom:none;margin:18px 0;">
+        <label>Bell Schedule:</label>
+        <p style="font-size:11px;color:#72767d;margin:0 0 10px 0;">Pick your school to show the right timer above chat. Saves automatically.</p>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px;">
+          <button class="school-select-btn" data-school="roybal">🏫 Roybal Learning Center</button>
+          <button class="school-select-btn" data-school="placeholder">🏫 Other School <span style="font-size:10px;opacity:0.6;">(coming soon)</span></button>
+          <button class="school-select-btn" data-school="none">❌ Hide Schedule</button>
+        </div>
         <button id="logout-btn" style="width:100%; padding:10px; background:#ed4245; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 14px;">Log Out</button>
         <!-- Admin site settings injected here by JS when admin logs in -->
       </div>
@@ -196,7 +204,7 @@
     </div>
   </div>
 
-  <audio id="bgm" loop><source src="VsLancerChapter4Version.mp3" type="audio/mpeg" /></audio>
+  <audio id="bgm" loop><source src="nothingyet.mp3" type="audio/mpeg" /></audio>
   <audio id="sfx-player"></audio>
   <audio id="jumpscare-audio" src="jumpscarenoise.mp3"></audio>
 

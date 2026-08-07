@@ -1,4 +1,4 @@
-/* ---------------------- GENERAL ---------------------- max = 255 */
+/* ---------------------- GENERAL ---------------------- */
 body {
   font-family: 'Inter', Arial, sans-serif;
   margin: 0;
@@ -14,7 +14,7 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background: linear-gradient(135deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.2) 100%);
+  background: linear-gradient(135deg, rgba(0,255,0,0.2) 0%, rgba(255,0,0,0.2) 100%);
   z-index: 0;
 }
 
@@ -457,4 +457,25 @@ body::before {
 /* PREVIEWS */
 #icon-preview img, #jumps-preview img {
   max-width:100%; max-height:130px; border-radius:8px; border:3px solid #ffcc00;
+}
+
+/* ---------------------- SCHOOL SELECTOR BUTTONS ---------------------- */
+.school-select-btn {
+  width: 100%;
+  padding: 10px 12px;
+  background: #2f3136;
+  color: #b9bbbe;
+  border: 1px solid #4f545c;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.school-select-btn:hover { background: #40444b; color: #fff; }
+.school-select-btn.active {
+  background: #ffcc00;
+  color: #000;
+  border-color: #ffcc00;
+  font-weight: bold;
 }

@@ -1333,14 +1333,23 @@ const schoolSchedules = {
     name: "Roybal Learning Center",
     startLimit: "08:25",
     regular: [
-      { n: "PERIOD 1",  s: "08:30", e: "09:24" },
-      { n: "PERIOD 2",  s: "09:30", e: "10:24" },
-      { n: "PERIOD 3",  s: "10:30", e: "11:24" },
-      { n: "HOMEROOM",  s: "11:30", e: "11:52" },
-      { n: "LUNCH",     s: "11:52", e: "12:27" },
-      { n: "PERIOD 4",  s: "12:33", e: "13:27" },
-      { n: "PERIOD 5",  s: "13:33", e: "14:27" },
-      { n: "PERIOD 6",  s: "14:33", e: "15:27" }
+      { n: "PERIOD 1",  s: "08:30", e: "09:29" },
+      { n: "PERIOD 2",  s: "09:35", e: "10:34" },
+      { n: "PERIOD 3",  s: "10:40", e: "11:39" },
+      { n: "LUNCH",     s: "11:39", e: "12:12" },
+      { n: "PERIOD 4",  s: "12:18", e: "13:17" },
+      { n: "PERIOD 5",  s: "13:23", e: "14:22" },
+      { n: "PERIOD 6",  s: "14:28", e: "15:27" }
+    ],
+    wedThu: [
+      { n: "PERIOD 1",  s: "08:30", e: "09:23" },
+      { n: "PERIOD 2",  s: "09:29", e: "10:22" },
+      { n: "PERIOD 3",  s: "10:28", e: "11:21" },
+      { n: "ADVISORY",  s: "11:26", e: "11:56" },
+      { n: "LUNCH",     s: "11:56", e: "12:30" },
+      { n: "PERIOD 4",  s: "12:36", e: "13:29" },
+      { n: "PERIOD 5",  s: "13:35", e: "14:28" },
+      { n: "PERIOD 6",  s: "14:34", e: "15:27" }
     ],
     tuesday: [
       { n: "PERIOD 1",  s: "08:30", e: "09:19" },
@@ -1406,6 +1415,8 @@ function updateClock() {
     sched = school.minimum;
   } else if (day === 2 && school.tuesday && school.tuesday.length) {
     sched = school.tuesday;
+  } else if ((day === 3 || day === 4) && school.wedThu && school.wedThu.length) {
+    sched = school.wedThu;
   }
 
   if (!sched || !sched.length) {
